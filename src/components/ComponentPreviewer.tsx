@@ -13,7 +13,7 @@ import _ from 'lodash';
 import * as Tone from 'tone';
 import * as THREE from 'three';
 import Papa from 'papaparse';
-// React Icons (一部の主要なアイコンセットをインポート)
+// React Icons
 import * as FaIcons from 'react-icons/fa';
 import * as AiIcons from 'react-icons/ai';
 import * as BiIcons from 'react-icons/bi';
@@ -31,36 +31,101 @@ import * as SiIcons from 'react-icons/si';
 import * as TiIcons from 'react-icons/ti';
 import * as VscIcons from 'react-icons/vsc';
 
-// シンプルなカウンターコンポーネント（デフォルト表示用）
-const CounterDemo = () => {
-  const [count, setCount] = useState(0);
-  
-  return (
-    <div className="p-5 text-center">
-      <h3 className="text-xl font-bold mb-3">シンプルカウンター</h3>
-      <p className="mb-4">カウント: {count}</p>
-      <div className="flex justify-center gap-2">
-        <button
-          onClick={() => setCount(count + 1)}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-700"
-        >
-          増加
-        </button>
-        <button
-          onClick={() => setCount(count - 1)}
-          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-700"
-        >
-          減少
-        </button>
-      </div>
-    </div>
-  );
+import AppleLogo from './AppleLogo';
+import WelcomeScreen from './WelcomeScreen';
+import SampleCounter from './SampleCounter';
+
+// Function to convert SVG to data URL for download
+const svgToDataURL = (svgElement: SVGElement): string => {
+  const svgString = new XMLSerializer().serializeToString(svgElement);
+  const svg64 = btoa(unescape(encodeURIComponent(svgString)));
+  return `data:image/svg+xml;base64,${svg64}`;
 };
 
-// 安全なコンポーネント実行のための関数
+// Function to download element as image
+const downloadElementAsImage = (element: HTMLElement, fileName: string, format: 'png' | 'svg' = 'png') => {
+  if (format === 'svg') {
+    if (element.querySelector('svg')) {
+      const svg = element.querySelector('svg') as SVGElement;
+      const svgDataUrl = svgToDataURL(svg);
+      
+      const link = document.createElement('a');
+      link.href = svgDataUrl;
+      link.download = `${fileName}.svg`;
+      link.click();
+    } else {
+      console.error('No SVG element found for download');
+    }
+    return;
+  }
+  
+  // For PNG, use DOM to canvas approach
+  const captureElement = async () => {
+    try {
+      // Create canvas
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('Failed to get canvas context');
+      }
+      
+      // Set dimensions
+      const rect = element.getBoundingClientRect();
+      canvas.width = rect.width * 2; // For better quality
+      canvas.height = rect.height * 2;
+      ctx.scale(2, 2);
+      
+      // Draw background
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Convert element to image
+      const data = `<svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}">
+        <foreignObject width="100%" height="100%" x="0" y="0">
+          <div xmlns="http://www.w3.org/1999/xhtml">
+            ${element.outerHTML}
+          </div>
+        </foreignObject>
+      </svg>`;
+      
+      const img = new Image();
+      const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(data);
+      
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0);
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = `${fileName}.png`;
+        link.click();
+      };
+      
+      img.onerror = (e) => {
+        console.error('Image loading error:', e);
+        // Fallback to SVG if PNG fails
+        if (element.querySelector('svg')) {
+          const svg = element.querySelector('svg') as SVGElement;
+          const svgDataUrl = svgToDataURL(svg);
+          
+          const link = document.createElement('a');
+          link.href = svgDataUrl;
+          link.download = `${fileName}.svg`;
+          link.click();
+        }
+      };
+      
+      img.src = dataUrl;
+    } catch (err) {
+      console.error('Failed to capture element:', err);
+    }
+  };
+  
+  captureElement();
+};
+
+// Safe component execution function
 const compileJSX = (code: string): React.ComponentType => {
   try {
-    // ライブラリをスコープに入れる
+    // Add libraries to scope
     const scope: Record<string, any> = {
       React,
       useState,
@@ -70,7 +135,7 @@ const compileJSX = (code: string): React.ComponentType => {
       useMemo: React.useMemo,
       useContext: React.useContext,
       useReducer: React.useReducer,
-      // ライブラリ
+      // Libraries
       recharts,
       d3,
       Chart,
@@ -87,20 +152,31 @@ const compileJSX = (code: string): React.ComponentType => {
       ...RiIcons, ...SiIcons, ...TiIcons, ...VscIcons,
     };
 
-    // まず、import/export文を削除
-    const strippedCode = code
-      .replace(/import\s+.*?from\s+['"].*?['"]/g, '')
-      .replace(/import\s+{.*?}\s+from\s+['"].*?['"]/g, '')
-      .replace(/import\s+['"].*?['"]/g, '')
-      .replace(/export\s+default\s+/, '')
-      .replace(/export\s+/, '');
+    // Strip import/export statements (more carefully)
+    let strippedCode = code;
+    
+    // Remove imports
+    strippedCode = strippedCode
+      .replace(/import\s+.*?from\s+['"].*?['"]\s*;?/g, '')
+      .replace(/import\s+{.*?}\s+from\s+['"].*?['"]\s*;?/g, '')
+      .replace(/import\s+['"].*?['"]\s*;?/g, '');
+    
+    // Save any component name from default export for later use
+    let defaultExportMatch = strippedCode.match(/export\s+default\s+([A-Z][A-Za-z0-9_]*)/);
+    let defaultExportName = defaultExportMatch ? defaultExportMatch[1] : null;
+    
+    // Remove exports
+    strippedCode = strippedCode
+      .replace(/export\s+default\s+[A-Z][A-Za-z0-9_]*/g, '')
+      .replace(/export\s+default\s+/g, '')
+      .replace(/export\s+/g, '');
 
-    // コンポーネント検出のための正規表現パターン
-    const constComponentPattern = /const\s+([A-Z][A-Za-z0-9_]*)\s*=\s*(\(|\s*=>)/;
+    // Component detection regex patterns (improved)
+    const constComponentPattern = /const\s+([A-Z][A-Za-z0-9_]*)\s*=\s*(?:\(|\s*=>|\s*function\s*\()/;
     const functionComponentPattern = /function\s+([A-Z][A-Za-z0-9_]*)\s*\(/;
-    const classComponentPattern = /class\s+([A-Z][A-Za-z0-9_]*)\s+extends\s+React\.Component/;
+    const classComponentPattern = /class\s+([A-Z][A-Za-z0-9_]*)\s+extends\s+(?:React\.)?Component/;
 
-    // コンポーネント名を検出
+    // Detect component name
     let componentName: string | null = null;
     let match: RegExpExecArray | null;
 
@@ -111,14 +187,15 @@ const compileJSX = (code: string): React.ComponentType => {
     } else if ((match = classComponentPattern.exec(strippedCode)) !== null) {
       componentName = match[1];
     }
-
-    // コンポーネント名が見つからない場合は、exportされたコンポーネント名を使用する
-    if (!componentName && exportedComponentName) {
-      componentName = exportedComponentName;
+    
+    // Use the default export name if we found one earlier
+    if (!componentName && defaultExportName) {
+      componentName = defaultExportName;
     }
 
-    // まだ見つからない場合は、デフォルトで「Component」や「CounterApp」を探す
+    // If component name not found, try additional detection methods
     if (!componentName) {
+      // Look for common component names
       if (strippedCode.includes('const Component =') || 
           strippedCode.includes('function Component(') || 
           strippedCode.includes('class Component extends')) {
@@ -127,69 +204,105 @@ const compileJSX = (code: string): React.ComponentType => {
                  strippedCode.includes('function CounterApp(') || 
                  strippedCode.includes('class CounterApp extends')) {
         componentName = 'CounterApp';
+      } else if (strippedCode.includes('const App =') || 
+                 strippedCode.includes('function App(') || 
+                 strippedCode.includes('class App extends')) {
+        componentName = 'App';
       } else {
-        // 安全のためにラップするコード
-        strippedCode = `const Component = () => { 
-          return (
-            <div className="text-red-500 p-4 border border-red-300 rounded">
-              コンポーネントが見つかりません。「Component」という名前で定義してください。
-            </div>
-          );
-        };
-        ${strippedCode}`;
-        componentName = 'Component';
+        // Look for any capitalized component-like expressions
+        const anyComponentMatch = strippedCode.match(/const\s+([A-Z][A-Za-z0-9_]*)\s*=/);
+        if (anyComponentMatch) {
+          componentName = anyComponentMatch[1];
+        } else {
+          // Wrap in safe fallback component
+          const wrappedCode = `
+          const Component = () => { 
+            return (
+              <div className="text-red-500 p-4 border border-red-300 rounded">
+                No component found. Please define a component with a capitalized name.
+              </div>
+            );
+          };
+          
+          ${strippedCode}`;
+          
+          // Reassign
+          componentName = 'Component';
+          return compileJSX(wrappedCode);
+        }
       }
     }
 
-    // JSXをBabelで変換 (モジュール変換プラグインを追加)
-    const transformedCode = Babel.transform(strippedCode, {
-      presets: ['react', 'env'],
-      plugins: ['transform-modules-commonjs'],
-      filename: 'component.jsx'
-    }).code;
+    // Log for debugging
+    console.log('Detected component name:', componentName);
 
-    // console.log('Transformed code:', transformedCode);
+    // Transform JSX with Babel with better error handling
+    let transformedCode;
+    try {
+      transformedCode = Babel.transform(strippedCode, {
+        presets: ['react', 'env'],
+        plugins: ['transform-modules-commonjs'],
+        filename: 'component.jsx'
+      }).code;
+    } catch (babelError: unknown) {
+      console.error('Babel transformation error:', babelError);
+      const errorMessage = babelError instanceof Error ? babelError.message : 'Unknown Babel error';
+      throw new Error(`Babel couldn't transform the code: ${errorMessage}`);
+    }
 
-    // コンポーネントを直接実行可能な関数に変換
+    // Create more robust executable component function
     const executableCode = `
-      // モジュールとexportsの変数を定義
+      // Define module and exports
       const module = { exports: {} };
       const exports = module.exports;
       
-      // 変換されたコードを実行
-      ${transformedCode}
-      
-      // コンポーネントを返す
-      return ${componentName};
+      try {
+        // Execute transformed code
+        ${transformedCode}
+        
+        // First check if the component is available in the scope
+        if (typeof ${componentName} === 'function') {
+          return ${componentName};
+        } 
+        // Then check if it's defined on module.exports
+        else if (module.exports && typeof module.exports === 'function') {
+          return module.exports;
+        }
+        // Check if it's the default export
+        else if (module.exports && module.exports.default && typeof module.exports.default === 'function') {
+          return module.exports.default;
+        }
+        // Finally, try to return the named component
+        else {
+          return ${componentName};
+        }
+      } catch (e) {
+        console.error('Runtime error in component code:', e);
+        throw new Error('Error in component code: ' + e.message);
+      }
     `;
 
-    // Function コンストラクタを使ってコードを実行
+    // Execute the code using Function constructor
     try {
-      console.log('Component name:', componentName);
-      console.log('Executing code with scope keys:', Object.keys(scope));
-      
       const factory = new Function(...Object.keys(scope), executableCode);
       const component = factory(...Object.values(scope));
       
-      console.log('Component evaluation result type:', typeof component);
-      
-      // コンポーネントが関数であることを確認
+      // Verify component is a function
       if (typeof component === 'function') {
-        console.log('Successfully evaluated component function');
         return component;
       } else {
-        console.error('Result is not a component function:', component);
-        throw new Error('返されたオブジェクトはReactコンポーネントではありません');
+        throw new Error('The returned object is not a React component');
       }
-    } catch (evalError) {
-      console.error('コンポーネント評価エラー:', evalError);
-      throw new Error(`コンポーネントの評価に失敗しました: ${evalError.message}`);
+    } catch (evalError: unknown) {
+      console.error('Component evaluation error:', evalError);
+      const errorMessage = evalError instanceof Error ? evalError.message : 'Unknown error';
+      throw new Error(`Failed to evaluate component: ${errorMessage}`);
     }
   } catch (error) {
-    console.error('コンパイルエラー:', error);
+    console.error('Compilation error:', error);
     return () => (
       <div className="p-4 bg-red-100 rounded">
-        <h3 className="text-lg font-semibold text-red-600">エラー</h3>
+        <h3 className="text-lg font-semibold text-red-600">Error</h3>
         <p className="whitespace-pre-wrap text-red-500">
           {(error as Error).message}
         </p>
@@ -202,60 +315,49 @@ const ComponentPreviewer: React.FC = () => {
   const [code, setCode] = useState<string>('');
   const [Component, setComponent] = useState<React.ComponentType | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showCode, setShowCode] = useState<boolean>(true);
+  const [showCode, setShowCode] = useState<boolean>(false); // Default to closed
+  const [hasLoadedComponent, setHasLoadedComponent] = useState<boolean>(false);
   const editorRef = useRef<any>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
 
-  // サンプルコード
-  const defaultCode = `import { useState } from 'react';
+  // Sample code for the counter app (Apple style)
+  const sampleCode = `import { useState } from 'react';
 
 const CounterApp = () => {
   const [count, setCount] = useState(0);
   
-  const increment = () => {
-    setCount(count + 1);
-  };
-  
-  const decrement = () => {
-    setCount(count - 1);
-  };
-  
-  const reset = () => {
-    setCount(0);
-  };
-  
   return (
-    <div className="flex flex-col items-center justify-center p-8 bg-gray-100 rounded-lg shadow-md">
-      <h1 className="text-3xl font-bold mb-6">カウンターアプリ</h1>
+    <div className="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-md max-w-sm mx-auto">
+      <h2 className="text-2xl font-light mb-8 tracking-tight">Counter</h2>
       
-      <div className="bg-white p-6 rounded-lg shadow-md mb-6 w-full max-w-md">
-        <div className="text-6xl font-bold text-center mb-4">{count}</div>
-        
-        <div className="flex justify-center gap-4">
-          <button 
-            onClick={decrement}
-            className="px-6 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors duration-200"
-          >
-            -1
-          </button>
-          
-          <button 
-            onClick={reset}
-            className="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors duration-200"
-          >
-            リセット
-          </button>
-          
-          <button 
-            onClick={increment}
-            className="px-6 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors duration-200"
-          >
-            +1
-          </button>
-        </div>
+      <div className="bg-gray-50 w-full rounded-xl p-8 mb-8 shadow-inner">
+        <div className="text-7xl font-light text-center">{count}</div>
       </div>
       
-      <div className="text-gray-600">
-        上のボタンを押してカウントを変更してください
+      <div className="flex justify-between w-full">
+        <button 
+          onClick={() => setCount(count - 1)}
+          className="w-16 h-16 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-xl font-light transition-colors shadow-sm"
+          aria-label="Decrease"
+        >
+          -
+        </button>
+        
+        <button 
+          onClick={() => setCount(0)}
+          className="px-6 py-2 rounded-full border border-gray-300 hover:bg-gray-100 text-sm transition-colors"
+          aria-label="Reset"
+        >
+          Reset
+        </button>
+        
+        <button 
+          onClick={() => setCount(count + 1)}
+          className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white hover:opacity-90 flex items-center justify-center text-xl font-light transition-colors shadow-sm"
+          aria-label="Increase"
+        >
+          +
+        </button>
       </div>
     </div>
   );
@@ -263,16 +365,17 @@ const CounterApp = () => {
 
 export default CounterApp;`;
 
-  // 初期化時にデフォルトコードをセット
-  useEffect(() => {
-    setCode(defaultCode);
-    compileAndSetComponent(defaultCode);
-  }, []);
+  // Load sample code
+  const loadSample = () => {
+    setCode(sampleCode);
+    compileAndSetComponent(sampleCode);
+    setHasLoadedComponent(true);
+  };
 
-  // クリップボードから貼り付けられたコードを処理
+  // Handle clipboard paste
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
-      // テキストエリアやinputにフォーカスがある場合は、そのままペーストを許可
+      // Allow paste in inputs and text areas
       const activeElement = document.activeElement;
       const isEditorActive = 
         activeElement?.tagName === 'INPUT' || 
@@ -285,6 +388,7 @@ export default CounterApp;`;
         const pastedCode = e.clipboardData?.getData('text') || '';
         setCode(pastedCode);
         compileAndSetComponent(pastedCode);
+        setHasLoadedComponent(true);
       }
     };
 
@@ -294,80 +398,116 @@ export default CounterApp;`;
     };
   }, []);
 
-  // コードをコンパイルしてコンポーネントをセット
+  // Compile code and set component
   const compileAndSetComponent = (codeToCompile: string) => {
     try {
       const CompiledComponent = compileJSX(codeToCompile);
       setComponent(() => CompiledComponent);
       setError(null);
     } catch (err) {
-      setComponent(() => CounterDemo);
-      setError(`コンパイルエラー: ${(err as Error).message}`);
+      setComponent(() => SampleCounter);
+      setError(`Compilation error: ${(err as Error).message}`);
     }
   };
 
-  // コードが変更されたときに再コンパイル
-  useEffect(() => {
-    if (code) {
-      compileAndSetComponent(code);
-    }
-  }, [code]);
-
-  // エディタの設定を処理
+  // Editor setup
   const handleEditorDidMount = (editor: any) => {
     editorRef.current = editor;
   };
 
+  // Download preview as image
+  const handleDownloadPreview = () => {
+    if (previewRef.current) {
+      downloadElementAsImage(
+        previewRef.current,
+        'claude-preview',
+        'png'
+      );
+    }
+  };
+
   return (
-    <div style={{width: '100vw', maxWidth: '100vw', margin: 0, padding: 0, boxSizing: 'border-box', overflowX: 'hidden'}} className="bg-white">
-      <div className="flex justify-between items-center mb-1 px-1" style={{width: '100%'}}>
-        <h1 className="text-xl font-bold">Claude Artifact Previewer</h1>
+    <div className="bg-white min-h-screen flex flex-col items-stretch" style={{ width: '100%', maxWidth: '100%', margin: 0, padding: 0 }}>
+      {/* Header */}
+      <header className="flex justify-between items-center px-6 py-3 border-b border-gray-200 sticky top-0 bg-white z-10">
         <div className="flex items-center gap-2">
-          <p className="text-gray-600 text-xs">⌘V でコードをペースト</p>
+          <AppleLogo />
+          <h1 className="text-2xl font-light">Claude ⌘V</h1>
+        </div>
+        
+        <div className="flex items-center gap-4">
           <button 
-            className="bg-gray-200 hover:bg-gray-300 px-1 py-0.5 rounded text-xs"
+            className="px-3 py-1 flex items-center justify-center rounded-md bg-gray-100 hover:bg-gray-200 transition-colors text-sm"
             onClick={() => setShowCode(!showCode)}
           >
-            {showCode ? 'コードを非表示' : 'コードを表示'}
+            {showCode ? "Hide Code" : "Show Code"}
+          </button>
+          
+          <button
+            className="px-4 py-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-md hover:opacity-90 transition-opacity text-sm"
+            onClick={handleDownloadPreview}
+            disabled={!hasLoadedComponent}
+          >
+            Save as Image
           </button>
         </div>
-      </div>
+      </header>
       
-      <div style={{width: '100vw', maxWidth: '100vw', margin: 0, padding: 0, display: 'flex', flexDirection: showCode ? 'row' : 'column', flexWrap: 'nowrap'}}>
-        {/* コードエディタ */}
-        {showCode && <div style={{flex: '1 1 50%', maxWidth: '50%', padding: '2px', backgroundColor: '#f3f4f6'}}>
-          <h2 className="text-sm font-semibold mb-0.5">コード</h2>
-          <div style={{height: '75vh', width: '100%', border: '1px solid #d1d5db'}}>
-            <Editor
-              height="100%"
-              defaultLanguage="jsx"
-              value={code}
-              onChange={(value) => setCode(value || '')}
-              onMount={handleEditorDidMount}
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                tabSize: 2,
-              }}
-            />
+      {/* Main content */}
+      <div className="flex flex-1 overflow-hidden" style={{ width: '100%', maxWidth: '100%' }}>
+        {/* Code editor */}
+        {showCode && (
+          <div className="w-1/2 border-r border-gray-200 flex flex-col">
+            <div className="flex-1 p-4 bg-gray-50">
+              <Editor
+                height="100%"
+                defaultLanguage="jsx"
+                value={code}
+                onChange={(value) => setCode(value || '')}
+                onMount={handleEditorDidMount}
+                options={{
+                  minimap: { enabled: false },
+                  fontSize: 14,
+                  tabSize: 2,
+                  scrollBeyondLastLine: false,
+                  wordWrap: 'on',
+                  lineNumbers: 'on',
+                  formatOnPaste: true,
+                  renderLineHighlight: 'all',
+                  fontLigatures: true,
+                  folding: true,
+                  automaticLayout: true,
+                  lineDecorationsWidth: 10,
+                  colorDecorators: true,
+                }}
+                theme="vs"
+              />
+            </div>
+            <div className="p-4 border-t border-gray-200">
+              <button 
+                className="w-full py-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-lg hover:opacity-90 transition-opacity"
+                onClick={() => compileAndSetComponent(code)}
+              >
+                Run Code
+              </button>
+            </div>
           </div>
-          <div className="mt-1">
-            <button 
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-sm text-sm"
-              onClick={() => compileAndSetComponent(code)}
-            >
-              コードを実行
-            </button>
-          </div>
-        </div>}
-
-        {/* プレビュー */}
-        <div style={{flex: showCode ? '1 1 50%' : '1 1 100%', maxWidth: showCode ? '50%' : '100%', padding: '2px', backgroundColor: 'white'}}>
-          <h2 className="text-sm font-semibold mb-0.5">プレビュー</h2>
-          <div style={{border: '1px solid #d1d5db', minHeight: '75vh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto'}}>
-            {error ? (
-              <div className="bg-red-50 p-4 rounded w-full">
-                <div className="text-red-500 whitespace-pre-wrap mb-4">{error}</div>
+        )}
+        
+        {/* Preview */}
+        <div className={`${showCode ? 'w-1/2' : 'w-full'} flex flex-col overflow-hidden`}>
+          <div 
+            ref={previewRef} 
+            className="flex-1 flex items-start justify-center p-8 pt-12 overflow-auto bg-gray-50"
+            style={{ minHeight: '80vh' }}
+          >
+            {!hasLoadedComponent ? (
+              <WelcomeScreen onLoadSample={loadSample} />
+            ) : error ? (
+              <div className="bg-red-50 p-6 rounded-lg w-full max-w-2xl">
+                <div className="text-red-500 whitespace-pre-wrap mb-4">
+                  {error}
+                </div>
                 {Component && <Component />}
               </div>
             ) : Component ? (
@@ -375,8 +515,8 @@ export default CounterApp;`;
                 <Component />
               </React.Suspense>
             ) : (
-              <div className="text-gray-400">
-                コードをペーストしてコンポーネントをプレビュー
+              <div className="text-gray-400 text-center">
+                Paste component code to preview
               </div>
             )}
           </div>

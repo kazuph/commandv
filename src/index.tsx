@@ -23,9 +23,22 @@ app.get('*', (c) => {
         <head>
           <meta charSet="utf-8" />
           <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" name="viewport" />
+          <title>Claude ⌘V</title>
+          <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTM1IDMwaDMwdjVoNXYzMGgtNXY1aC0zMHYtNWgtNXYtMzBoNXYtMzB6TTQwIDM1di01aDIwdjVoNXYyMGgtNXY1aC0yMHYtNWgtNXYtMjBoNXoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=" />
           <style dangerouslySetInnerHTML={{__html: `
-            html, body, #root { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; }
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+            html, body, #root { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
             * { box-sizing: border-box; }
+            :root {
+              color-scheme: light;
+              --app-bg: #ffffff;
+              --text-primary: #000000;
+            }
+            body {
+              font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+              -webkit-font-smoothing: antialiased;
+              -moz-osx-font-smoothing: grayscale;
+            }
           `}} />
           <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
           {import.meta.env.PROD ? (
@@ -34,7 +47,7 @@ app.get('*', (c) => {
             <script type="module" src="/src/client.tsx"></script>
           )}
         </head>
-        <body style={{margin: 0, padding: 0, overflowX: 'hidden', width: '100%', maxWidth: '100%'}}>
+        <body style={{margin: 0, padding: 0, overflowX: 'hidden', width: '100%', maxWidth: '100%', backgroundColor: 'white'}}>
           <div id="root" style={{width: '100%', maxWidth: '100%'}}></div>
         </body>
       </html>
