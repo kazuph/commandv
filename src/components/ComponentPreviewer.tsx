@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Editor, loader } from '@monaco-editor/react';
+import Editor from '@monaco-editor/react';
+import html2canvas from 'html2canvas';
 import * as Babel from '@babel/standalone';
 import * as recharts from 'recharts';
 import _ from 'lodash';
@@ -369,89 +370,6 @@ export default CounterApp;`;
   };
 
   // Handle clipboard paste
-  // Configure Monaco editor with themes and features
-  useEffect(() => {
-    // Pre-configure Monaco with better syntax highlighting
-    loader.init().then((monaco) => {
-      // Set up better JSX/TSX highlighting
-      monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
-        jsx: monaco.languages.typescript.JsxEmit.React,
-        jsxFactory: 'React.createElement',
-        reactNamespace: 'React',
-        allowNonTsExtensions: true,
-        allowJs: true,
-        target: monaco.languages.typescript.ScriptTarget.Latest,
-      });
-
-      // Register better syntax highlighting for JSX
-      monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-        noSemanticValidation: false,
-        noSyntaxValidation: false,
-      });
-
-      // Load a theme with better highlighting for React code
-      monaco.editor.defineTheme('react-tailwind-dark', {
-        base: 'vs-dark',
-        inherit: true,
-        rules: [
-          // JSX Syntax highlighting
-          { token: 'delimiter.bracket.js', foreground: 'BBBBBB' },  // brackets
-          { token: 'delimiter.parenthesis.js', foreground: 'BBBBBB' }, // parentheses
-          { token: 'delimiter.angle.js', foreground: '569CD6' },   // angle brackets for JSX
-          { token: 'delimiter.curly.js', foreground: 'C586C0' },  // curly braces
-          
-          // Keywords & identifiers
-          { token: 'keyword.js', foreground: 'C586C0', fontStyle: 'bold' }, // keywords like import, export
-          { token: 'keyword.control.js', foreground: 'C586C0' },   // control keywords
-          { token: 'keyword.json', foreground: 'C586C0' },
-          { token: 'keyword.flow.js', foreground: 'C586C0' },      // flow control
-          { token: 'identifier.js', foreground: '9CDCFE' },        // variables
-          
-          // JSX components and attributes
-          { token: 'identifier.jsx', foreground: '4EC9B0' },       // JSX components
-          { token: 'tag.js', foreground: '569CD6' },              // JSX tags
-          { token: 'tag.id.js', foreground: '4EC9B0' },           // JSX element IDs
-          { token: 'tag.class.js', foreground: '4EC9B0' },        // JSX element classes
-          
-          // String literals with special handling for className values
-          { token: 'string.js', foreground: 'CE9178' },            // normal strings
-          { token: 'string.quote.js', foreground: 'CE9178' },      // quotation marks
-          
-          // Comments
-          { token: 'comment.js', foreground: '6A9955' },           // comments
-          
-          // Numbers and other values
-          { token: 'number.js', foreground: 'B5CEA8' },           // numbers
-          { token: 'regexp.js', foreground: 'D16969' },           // regular expressions
-          
-          // Functions
-          { token: 'entity.name.function.js', foreground: 'DCDCAA' }, // function names
-          { token: 'entity.name.class.js', foreground: '4EC9B0' },   // class names
-          
-          // Type annotations
-          { token: 'type.identifier.js', foreground: '4EC9B0' },   // type annotations
-          
-          // Special highlights for Tailwind color-related classes
-          { token: 'meta.tag.without-attributes.js', foreground: '569CD6' },
-          { token: 'meta.tag.attributes.js', foreground: '9CDCFE' }
-        ],
-        colors: {
-          'editor.foreground': '#D4D4D4',
-          'editor.background': '#1E1E1E',
-          'editorCursor.foreground': '#AEAFAD',
-          'editor.lineHighlightBackground': '#2D2D30',
-          'editorLineNumber.foreground': '#858585',
-          'editor.selectionBackground': '#264F78',
-          'editor.inactiveSelectionBackground': '#3A3D41',
-          'editorIndentGuide.background': '#404040',
-        }
-      });
-      
-      // Set the custom theme as default
-      setEditorTheme('react-tailwind-dark');
-    });
-  }, []);
-
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       // Allow paste in inputs and text areas
@@ -494,14 +412,42 @@ export default CounterApp;`;
     editorRef.current = editor;
   };
 
-  // Download preview as image
+  // Download preview as image with improved styling
   const handleDownloadPreview = () => {
     if (previewRef.current) {
-      downloadElementAsImage(
-        previewRef.current,
-        'commandv-component',
-        'png'
-      );
+      const element = previewRef.current;
+      
+      // First apply computed styles to ensure all styling is captured
+      const styles = window.getComputedStyle(element);
+      const originalElementStyle = element.getAttribute('style') || '';
+      let additionalStyles = 'background-color: ' + styles.backgroundColor + '; ';
+      additionalStyles += 'color: ' + styles.color + '; ';
+      additionalStyles += 'padding: ' + styles.padding + '; ';
+      
+      // Apply the combined styles temporarily for the capture
+      element.setAttribute('style', originalElementStyle + additionalStyles);
+      
+      // Capture the element
+      html2canvas(element, {
+        backgroundColor: styles.backgroundColor || '#f9fafb',
+        logging: false,
+        scale: 2, // Higher resolution
+        useCORS: true,
+        allowTaint: true,
+      }).then((canvas: HTMLCanvasElement) => {
+        // Create download link
+        const link = document.createElement('a');
+        link.download = 'commandv-component.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        
+        // Restore original styling
+        element.setAttribute('style', originalElementStyle);
+      }).catch((err: Error) => {
+        console.error('Failed to capture element:', err);
+        // Restore original styling on error too
+        element.setAttribute('style', originalElementStyle);
+      });
     }
   };
 
@@ -540,7 +486,7 @@ export default CounterApp;`;
             <div className="flex-1 p-4 bg-gray-50" style={{ height: 'calc(80vh - 100px)' }}>
               <Editor
                 height="100%"
-                defaultLanguage="jsx"
+                defaultLanguage="javascript"
                 value={code}
                 onChange={(value) => setCode(value || '')}
                 onMount={handleEditorDidMount}
@@ -578,8 +524,7 @@ export default CounterApp;`;
                     onChange={(e) => setEditorTheme(e.target.value)}
                   >
                     <option value="vs">Light</option>
-                    <option value="react-tailwind-dark">React Dark</option>
-                    <option value="vs-dark">Default Dark</option>
+                    <option value="vs-dark">Dark</option>
                     <option value="hc-black">High Contrast</option>
                   </select>
                 </div>

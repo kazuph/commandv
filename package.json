@@ -29,6 +29,7 @@
     "@babel/standalone": "^7.26.10",
     "@monaco-editor/react": "^4.7.0",
     "hono": "^4.6.9",
+    "html2canvas": "^1.4.1",
     "lodash": "^4.17.21",
     "papaparse": "^5.5.2",
     "react": "^18.2.0",
