@@ -1,5 +1,3 @@
-# CommandV
-
 <div align="center">
   <img src="https://raw.githubusercontent.com/kazuph/commandv/main/public/commandv-banner.svg" alt="CommandV Banner" width="600">
   <h3>An instant previewer for Claude Artifacts</h3>
