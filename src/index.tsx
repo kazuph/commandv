@@ -24,6 +24,7 @@ app.get('*', (c) => {
           <meta charSet="utf-8" />
           <meta content="width=device-width, initial-scale=1" name="viewport" />
           <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css" />
+          <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
           {import.meta.env.PROD ? (
             <script type="module" src="/static/client.js"></script>
           ) : (

@@ -1,0 +1,41 @@
+## 共通項目
+
+- pnpmを使ってください
+- pnpm run dev等のコマンドは私が実行するので言ってください。また、一度起動したあとは基本的にホットリロードされます。
+- Hono開発の原則を守ってください。Cloudflare Workersの原則を守ってください。
+
+## 実装の注意点
+
+### ClaudeのArtifactで利用されるライブラリたち
+
+```
+# recharts - データ可視化とグラフ作成のための強力なライブラリ
+import { LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+
+# shadcn/ui - アクセシブルなUIコンポーネント
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+# mathjs - 数学計算用ライブラリ
+import * as math from 'mathjs';
+
+# lodash - データ操作のユーティリティ関数
+import _ from 'lodash';
+
+# d3 - 高度なデータ可視化
+import * as d3 from 'd3';
+
+# Plotly - インタラクティブなグラフライブラリ
+import * as Plotly from 'plotly';
+
+# Chart.js - レスポンシブなチャート作成
+import * as Chart from 'chart.js';
+
+# Tone - WebオーディオAPI用ライブラリ
+import * as Tone from 'tone';
+
+# Three.js - 3Dグラフィックス用
+import * as THREE from 'three';
+
+# Papaparse - CSV処理用
+import Papa from 'papaparse';
+```
