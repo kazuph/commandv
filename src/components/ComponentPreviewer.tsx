@@ -202,6 +202,7 @@ const ComponentPreviewer: React.FC = () => {
   const [code, setCode] = useState<string>('');
   const [Component, setComponent] = useState<React.ComponentType | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showCode, setShowCode] = useState<boolean>(true);
   const editorRef = useRef<any>(null);
 
   // サンプルコード
@@ -318,15 +319,25 @@ export default CounterApp;`;
   };
 
   return (
-    <div className="w-full px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6 text-center">Claude Artifact Previewer</h1>
-      <p className="text-center text-gray-600 mb-8">⌘V でコードをペーストするだけで表示されます</p>
+    <div style={{width: '100vw', maxWidth: '100vw', margin: 0, padding: 0, boxSizing: 'border-box', overflowX: 'hidden'}} className="bg-white">
+      <div className="flex justify-between items-center mb-1 px-1" style={{width: '100%'}}>
+        <h1 className="text-xl font-bold">Claude Artifact Previewer</h1>
+        <div className="flex items-center gap-2">
+          <p className="text-gray-600 text-xs">⌘V でコードをペースト</p>
+          <button 
+            className="bg-gray-200 hover:bg-gray-300 px-1 py-0.5 rounded text-xs"
+            onClick={() => setShowCode(!showCode)}
+          >
+            {showCode ? 'コードを非表示' : 'コードを表示'}
+          </button>
+        </div>
+      </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div style={{width: '100vw', maxWidth: '100vw', margin: 0, padding: 0, display: 'flex', flexDirection: showCode ? 'row' : 'column', flexWrap: 'nowrap'}}>
         {/* コードエディタ */}
-        <div className="bg-gray-100 rounded-lg p-4 shadow-md">
-          <h2 className="text-xl font-semibold mb-4">コード</h2>
-          <div className="h-[400px] border border-gray-300 rounded">
+        {showCode && <div style={{flex: '1 1 50%', maxWidth: '50%', padding: '2px', backgroundColor: '#f3f4f6'}}>
+          <h2 className="text-sm font-semibold mb-0.5">コード</h2>
+          <div style={{height: '75vh', width: '100%', border: '1px solid #d1d5db'}}>
             <Editor
               height="100%"
               defaultLanguage="jsx"
@@ -340,20 +351,20 @@ export default CounterApp;`;
               }}
             />
           </div>
-          <div className="mt-4">
+          <div className="mt-1">
             <button 
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-sm text-sm"
               onClick={() => compileAndSetComponent(code)}
             >
               コードを実行
             </button>
           </div>
-        </div>
+        </div>}
 
         {/* プレビュー */}
-        <div className="bg-white rounded-lg p-4 shadow-md">
-          <h2 className="text-xl font-semibold mb-4">プレビュー</h2>
-          <div className="border border-gray-300 rounded p-4 min-h-[400px] flex items-center justify-center overflow-auto">
+        <div style={{flex: showCode ? '1 1 50%' : '1 1 100%', maxWidth: showCode ? '50%' : '100%', padding: '2px', backgroundColor: 'white'}}>
+          <h2 className="text-sm font-semibold mb-0.5">プレビュー</h2>
+          <div style={{border: '1px solid #d1d5db', minHeight: '75vh', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto'}}>
             {error ? (
               <div className="bg-red-50 p-4 rounded w-full">
                 <div className="text-red-500 whitespace-pre-wrap mb-4">{error}</div>
