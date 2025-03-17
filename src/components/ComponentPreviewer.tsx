@@ -420,7 +420,7 @@ export default CounterApp;`;
     if (previewRef.current) {
       downloadElementAsImage(
         previewRef.current,
-        'claude-preview',
+        'commandv-component',
         'png'
       );
     }
@@ -432,7 +432,7 @@ export default CounterApp;`;
       <header className="flex justify-between items-center px-6 py-3 border-b border-gray-200 sticky top-0 bg-white z-10">
         <div className="flex items-center gap-2">
           <AppleLogo />
-          <h1 className="text-2xl font-light">Claude ⌘V</h1>
+          <h1 className="text-2xl font-light">CommandV</h1>
         </div>
         
         <div className="flex items-center gap-4">

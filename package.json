@@ -1,5 +1,24 @@
 {
+  "name": "commandv",
+  "version": "1.0.0",
+  "description": "An instant previewer for Claude Artifacts. Just paste your component code and see it rendered immediately.",
   "type": "module",
+  "license": "MIT",
+  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kazuph/commandv.git"
+  },
+  "keywords": [
+    "react",
+    "component",
+    "preview",
+    "paste",
+    "visualizer",
+    "cloudflare",
+    "workers",
+    "hono"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build --mode client && vite build",

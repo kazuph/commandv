@@ -23,7 +23,7 @@ app.get('*', (c) => {
         <head>
           <meta charSet="utf-8" />
           <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" name="viewport" />
-          <title>Claude ⌘V</title>
+          <title>CommandV</title>
           <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTM1IDMwaDMwdjVoNXYzMGgtNXY1aC0zMHYtNWgtNXYtMzBoNXYtMzB6TTQwIDM1di01aDIwdjVoNXYyMGgtNXY1aC0yMHYtNWgtNXYtMjBoNXoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=" />
           <style dangerouslySetInnerHTML={{__html: `
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');

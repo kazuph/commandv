@@ -12,14 +12,14 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLoadSample }) => {
         <AppleLogo />
       </div>
       
-      <h1 className="text-4xl font-light mb-4 tracking-tight">Claude ⌘V</h1>
+      <h1 className="text-4xl font-light mb-4 tracking-tight">CommandV</h1>
       
       <div className="text-xl text-gray-600 mb-8 font-light text-center max-w-md">
         Preview Claude Artifacts instantly with a simple paste
       </div>
       
       <div className="text-3xl font-light mb-10 tracking-tight">
-        Just ⌘V!
+        Just paste it!
       </div>
       
       <button 
