@@ -11,17 +11,6 @@ function App() {
   )
 }
 
-// Load html2canvas for image download functionality
-const loadDependencies = () => {
-  const script = document.createElement('script');
-  script.src = 'https://html2canvas.hertzen.com/dist/html2canvas.min.js';
-  script.async = true;
-  document.body.appendChild(script);
-};
-
 const domNode = document.getElementById('root')!
 const root = createRoot(domNode)
 root.render(<App />)
-
-// Load dependencies
-loadDependencies();

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
-import html2canvas from 'html2canvas';
+import * as htmlToImage from 'html-to-image';
 import * as Babel from '@babel/standalone';
 import * as recharts from 'recharts';
 import _ from 'lodash';
@@ -51,61 +51,40 @@ const downloadElementAsImage = (element: HTMLElement, fileName: string, format: 
     return;
   }
   
-  // For PNG, use DOM to canvas approach
+  // For PNG, use html-to-image which has better gradient support
   const captureElement = async () => {
     try {
-      // Create canvas
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        throw new Error('Failed to get canvas context');
+      // Apply temporary background style if needed
+      const originalBackgroundColor = element.style.backgroundColor;
+      if (!originalBackgroundColor || originalBackgroundColor === 'transparent') {
+        element.style.backgroundColor = '#FFFFFF';
       }
       
       // Set dimensions
       const rect = element.getBoundingClientRect();
-      canvas.width = rect.width * 2; // For better quality
-      canvas.height = rect.height * 2;
-      ctx.scale(2, 2);
       
-      // Draw background
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Convert element to image
-      const data = `<svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}">
-        <foreignObject width="100%" height="100%" x="0" y="0">
-          <div xmlns="http://www.w3.org/1999/xhtml">
-            ${element.outerHTML}
-          </div>
-        </foreignObject>
-      </svg>`;
-      
-      const img = new Image();
-      const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(data);
-      
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0);
-        const link = document.createElement('a');
-        link.href = canvas.toDataURL('image/png');
-        link.download = `${fileName}.png`;
-        link.click();
-      };
-      
-      img.onerror = (e) => {
-        console.error('Image loading error:', e);
-        // Fallback to SVG if PNG fails
-        if (element.querySelector('svg')) {
-          const svg = element.querySelector('svg') as SVGElement;
-          const svgDataUrl = svgToDataURL(svg);
-          
-          const link = document.createElement('a');
-          link.href = svgDataUrl;
-          link.download = `${fileName}.svg`;
-          link.click();
+      // Use html-to-image for better gradient support
+      const dataUrl = await htmlToImage.toPng(element, {
+        backgroundColor: '#FFFFFF',
+        pixelRatio: 2, // Higher resolution
+        quality: 1.0,
+        skipFonts: false, // Include fonts for better text rendering
+        canvasWidth: rect.width * 2,
+        canvasHeight: rect.height * 2,
+        style: {
+          transform: 'scale(1)',
+          transformOrigin: 'top left'
         }
-      };
+      });
       
-      img.src = dataUrl;
+      // Create download link
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `${fileName}.png`;
+      link.click();
+      
+      // Restore original background
+      element.style.backgroundColor = originalBackgroundColor;
     } catch (err) {
       console.error('Failed to capture element:', err);
     }
@@ -436,18 +415,21 @@ export default CounterApp;`;
       // Apply the combined styles temporarily for the capture
       element.setAttribute('style', originalElementStyle + additionalStyles);
       
-      // Capture the element
-      html2canvas(element, {
+      // Capture the element with html-to-image for better gradient support
+      htmlToImage.toPng(element, {
         backgroundColor: styles.backgroundColor || '#f9fafb',
-        logging: false,
-        scale: 2, // Higher resolution
-        useCORS: true,
-        allowTaint: true,
-      }).then((canvas: HTMLCanvasElement) => {
+        pixelRatio: 2, // Higher resolution
+        quality: 1.0,
+        skipFonts: false, // Include fonts for better text rendering
+        style: {
+          transform: 'scale(1)',
+          transformOrigin: 'top left'
+        }
+      }).then((dataUrl: string) => {
         // Create download link
         const link = document.createElement('a');
         link.download = 'commandv-component.png';
-        link.href = canvas.toDataURL('image/png');
+        link.href = dataUrl;
         link.click();
         
         // Restore original styling
