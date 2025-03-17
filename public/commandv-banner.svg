@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="600" height="160" viewBox="0 0 600 160" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <!-- Definitions for gradients, filters, and patterns -->
+  <defs>
+    <!-- Main background gradient -->
+    <linearGradient id="banner-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2A3990" />
+      <stop offset="50%" stop-color="#5B42F3" />
+      <stop offset="100%" stop-color="#AA52E4" />
+      <animate attributeName="x1" values="0%;10%;0%" dur="20s" repeatCount="indefinite" />
+      <animate attributeName="y1" values="0%;10%;0%" dur="23s" repeatCount="indefinite" />
+    </linearGradient>
+    
+    <!-- Neon glow filter -->
+    <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    
+    <!-- Text shadow filter -->
+    <filter id="text-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="2" flood-color="#FFFFFF" flood-opacity="0.7" />
+    </filter>
+    
+    <!-- Star pattern -->
+    <pattern id="star-pattern" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+      <circle cx="50" cy="50" r="1" fill="white" opacity="0.8" />
+      <circle cx="20" cy="30" r="0.8" fill="white" opacity="0.6" />
+      <circle cx="70" cy="80" r="1.2" fill="white" opacity="0.7" />
+      <circle cx="90" cy="20" r="0.6" fill="white" opacity="0.5" />
+      <circle cx="10" cy="90" r="0.9" fill="white" opacity="0.7" />
+    </pattern>
+    
+    <!-- Glowing particle effect -->
+    <radialGradient id="particle-glow" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
+    </radialGradient>
+    
+    <!-- Glow pulse animation -->
+    <radialGradient id="pulse-glow" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.9">
+        <animate attributeName="stop-opacity" values="0.9;0.2;0.9" dur="3s" repeatCount="indefinite" />
+      </stop>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0" />
+    </radialGradient>
+    
+    <!-- Clip path for custom shapes -->
+    <clipPath id="hex-clip">
+      <polygon points="25,0 75,0 100,43.3 75,86.6 25,86.6 0,43.3" />
+    </clipPath>
+  </defs>
+  
+  <!-- Banner background with rounded corners and star field -->
+  <rect width="600" height="160" rx="12" ry="12" fill="url(#banner-gradient)" />
+  <rect width="600" height="160" rx="12" ry="12" fill="url(#star-pattern)" opacity="0.3">
+    <animate attributeName="opacity" values="0.3;0.5;0.3" dur="8s" repeatCount="indefinite" />
+  </rect>
+  
+  <!-- Nebula-like effect -->
+  <g opacity="0.4">
+    <ellipse cx="150" cy="80" rx="100" ry="60" fill="#FF6EC7" opacity="0.2">
+      <animate attributeName="ry" values="60;70;60" dur="15s" repeatCount="indefinite" />
+      <animate attributeName="rx" values="100;120;100" dur="17s" repeatCount="indefinite" />
+    </ellipse>
+    <ellipse cx="450" cy="80" rx="120" ry="50" fill="#42F5E3" opacity="0.15">
+      <animate attributeName="ry" values="50;65;50" dur="18s" repeatCount="indefinite" />
+      <animate attributeName="rx" values="120;140;120" dur="16s" repeatCount="indefinite" />
+    </ellipse>
+  </g>
+  
+  <!-- Particle system effect -->
+  <g>
+    <!-- Particles -->
+    <circle cx="80" cy="40" r="3" fill="url(#particle-glow)">
+      <animate attributeName="cx" values="80;120;80" dur="12s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1" />
+      <animate attributeName="cy" values="40;60;40" dur="10s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1" />
+      <animate attributeName="r" values="3;4;3" dur="6s" repeatCount="indefinite" />
+    </circle>
+    
+    <circle cx="500" cy="100" r="2" fill="url(#particle-glow)">
+      <animate attributeName="cx" values="500;480;500" dur="14s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1" />
+      <animate attributeName="cy" values="100;80;100" dur="13s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1" />
+      <animate attributeName="r" values="2;3.5;2" dur="7s" repeatCount="indefinite" />
+    </circle>
+    
+    <circle cx="300" cy="130" r="2.5" fill="url(#particle-glow)">
+      <animate attributeName="cx" values="300;320;300" dur="16s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1" />
+      <animate attributeName="cy" values="130;140;130" dur="12s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1" />
+      <animate attributeName="r" values="2.5;3.5;2.5" dur="8s" repeatCount="indefinite" />
+    </circle>
+    
+    <circle cx="400" cy="40" r="3" fill="url(#particle-glow)">
+      <animate attributeName="cx" values="400;380;400" dur="15s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1" />
+      <animate attributeName="cy" values="40;50;40" dur="11s" repeatCount="indefinite" calcMode="spline" keySplines="0.4 0 0.6 1; 0.4 0 0.6 1" />
+      <animate attributeName="r" values="3;4;3" dur="9s" repeatCount="indefinite" />
+    </circle>
+  </g>
+  
+  <!-- Floating geometric elements with glowing effects -->
+  <!-- Glowing hexagon -->
+  <g transform="translate(200, 60)" opacity="0.7">
+    <polygon points="0,-15 13,-7.5 13,7.5 0,15 -13,7.5 -13,-7.5" fill="none" stroke="#A6FFFC" stroke-width="2">
+      <animate attributeName="opacity" values="0.7;1;0.7" dur="5s" repeatCount="indefinite" />
+      <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="20s" repeatCount="indefinite" />
+    </polygon>
+    <circle cx="0" cy="0" r="3" fill="url(#pulse-glow)" />
+  </g>
+  
+  <!-- Glowing triangle -->
+  <g transform="translate(420, 50)" opacity="0.6">
+    <polygon points="0,-18 15.6,9 -15.6,9" fill="none" stroke="#FFB8FE" stroke-width="2">
+      <animate attributeName="opacity" values="0.6;1;0.6" dur="6s" repeatCount="indefinite" />
+      <animateTransform attributeName="transform" type="rotate" from="0" to="-360" dur="25s" repeatCount="indefinite" />
+    </polygon>
+    <circle cx="0" cy="0" r="3" fill="url(#pulse-glow)" />
+  </g>
+  
+  <!-- Pulsing circle -->
+  <g transform="translate(100, 90)">
+    <circle cx="0" cy="0" r="12" fill="none" stroke="#B9ACFF" stroke-width="2">
+      <animate attributeName="r" values="12;16;12" dur="7s" repeatCount="indefinite" />
+      <animate attributeName="opacity" values="0.7;0.3;0.7" dur="7s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="0" cy="0" r="5" fill="url(#pulse-glow)" />
+  </g>
+  
+  <!-- Orbital circles -->
+  <g transform="translate(520, 120)" opacity="0.8">
+    <circle cx="0" cy="0" r="3" fill="#FFFFFF">
+      <animate attributeName="opacity" values="0.8;0.4;0.8" dur="4s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="0" cy="0" r="15" fill="none" stroke="#7EBBFF" stroke-width="1" opacity="0.5" />
+    <circle cx="15" cy="0" r="2" fill="url(#particle-glow)">
+      <animateTransform attributeName="transform" type="rotate" from="0 0 0" to="360 0 0" dur="8s" repeatCount="indefinite" />
+    </circle>
+  </g>
+  
+  <!-- Command + V Logo with glowing effect -->
+  <g transform="translate(300, 70)" text-anchor="middle">
+    <!-- Glowing orb behind logo -->
+    <circle cx="0" cy="0" r="35" fill="url(#pulse-glow)" opacity="0.6" />
+    
+    <!-- Command Symbol with dynamic highlight -->
+    <text font-family="Helvetica, Arial, sans-serif" font-weight="bold" font-size="68" fill="white" dominant-baseline="middle" filter="url(#text-shadow)">⌘V</text>
+    
+    <!-- Glowing outline effect -->
+    <text font-family="Helvetica, Arial, sans-serif" font-weight="bold" font-size="68" fill="none" stroke="#FFFFFF" stroke-width="0.5" dominant-baseline="middle" opacity="0.6" filter="url(#neon-glow)">⌘V</text>
+  </g>
+  
+  <!-- Stylized cosmic dust -->
+  <g opacity="0.5">
+    <path d="M50,80 Q100,60 150,85 T250,75" stroke="#FFFFFF" stroke-width="0.5" fill="none" opacity="0.2">
+      <animate attributeName="d" values="M50,80 Q100,60 150,85 T250,75;M50,85 Q100,65 150,80 T250,70;M50,80 Q100,60 150,85 T250,75" dur="20s" repeatCount="indefinite" />
+    </path>
+    <path d="M350,50 Q400,70 450,65 T550,85" stroke="#FFFFFF" stroke-width="0.5" fill="none" opacity="0.2">
+      <animate attributeName="d" values="M350,50 Q400,70 450,65 T550,85;M350,55 Q400,75 450,60 T550,80;M350,50 Q400,70 450,65 T550,85" dur="22s" repeatCount="indefinite" />
+    </path>
+  </g>
+  
+  <!-- Subtitle with glow effect -->
+  <g transform="translate(300, 115)" text-anchor="middle">
+    <text font-family="Helvetica, Arial, sans-serif" font-weight="300" font-size="14" fill="white" letter-spacing="1.5" opacity="0.9" filter="url(#text-shadow)">REIMAGINE YOUR COMPONENTS</text>
+    <!-- Subtle pulsing underline -->
+    <rect x="-130" y="8" width="260" height="1" fill="white" opacity="0.7">
+      <animate attributeName="opacity" values="0.7;1;0.7" dur="4s" repeatCount="indefinite" />
+    </rect>
+  </g>
+</svg>

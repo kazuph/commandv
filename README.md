@@ -1,7 +1,7 @@
 # CommandV
 
 <div align="center">
-  <img src="https://raw.githubusercontent.com/kazuph/commandv/main/public/logo.png" alt="CommandV Logo" width="120" height="120">
+  <img src="https://raw.githubusercontent.com/kazuph/commandv/main/public/commandv-banner.svg" alt="CommandV Banner" width="600">
   <h3>An instant previewer for Claude Artifacts</h3>
   <p>Just paste your component code and see it rendered immediately</p>
 </div>
@@ -11,11 +11,11 @@
 - **Instant Preview**: Paste React component code and see it rendered immediately
 - **Syntax Highlighting**: Built-in code editor with syntax highlighting
 - **Library Support**: Comes with support for popular libraries:
-  - `recharts`, `d3`, `Chart.js`, `Plotly`
-  - `mathjs`, `lodash`
-  - `Tone.js`, `Three.js`
-  - React Icons and more
-- **Export to Image**: Save your component previews as images
+  - `recharts` - Data visualization charts
+  - `lodash` - Utility functions
+  - `papaparse` - CSV parsing
+  - React Icons - Various icon sets
+- **Export to Image**: Save your component previews as high-quality images with proper gradient rendering
 - **No Setup Required**: Works directly in the browser
 - **Modern UI**: Clean, Apple-inspired design
 
@@ -67,10 +67,12 @@ This will deploy the application to Cloudflare Workers under the `commandv` doma
 
 ## 🛠️ Tech Stack
 
-- [React](https://reactjs.org/)
+- [React](https://reactjs.org/) - UI library
 - [Hono](https://hono.dev/) - Fast web framework for Cloudflare Workers
 - [Monaco Editor](https://microsoft.github.io/monaco-editor/) - Code editor
-- [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
+- [html-to-image](https://github.com/bubkoo/html-to-image) - High-quality image capture with proper gradient rendering
+- [Babel](https://babeljs.io/) - JavaScript compiler
+- [Recharts](https://recharts.org/) - React charting library
 - [Vite](https://vitejs.dev/) - Frontend tooling
 - [Cloudflare Workers](https://workers.cloudflare.com/) - Serverless platform
 
@@ -92,4 +94,5 @@ Contributions are welcome! Feel free to open an issue or submit a pull request.
 
 - [Monaco Editor](https://microsoft.github.io/monaco-editor/)
 - [Babel](https://babeljs.io/)
+- [React Icons](https://react-icons.github.io/react-icons/)
 - All the included libraries that make component previews rich and interactive
