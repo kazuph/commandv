@@ -28,19 +28,13 @@
   "dependencies": {
     "@babel/standalone": "^7.26.10",
     "@monaco-editor/react": "^4.7.0",
-    "chart.js": "^4.4.8",
-    "d3": "^7.9.0",
     "hono": "^4.6.9",
     "lodash": "^4.17.21",
-    "mathjs": "^14.3.1",
     "papaparse": "^5.5.2",
-    "plotly.js-dist": "^3.0.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-icons": "^5.5.0",
-    "recharts": "^2.15.1",
-    "three": "^0.174.0",
-    "tone": "^15.0.4"
+    "recharts": "^2.15.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241106.0",
@@ -48,12 +42,10 @@
     "@hono/vite-dev-server": "^0.16.0",
     "@tailwindcss/postcss": "^4.0.14",
     "@tailwindcss/vite": "^4.0.14",
-    "@types/d3": "^7.4.3",
     "@types/lodash": "^4.17.16",
     "@types/papaparse": "^5.3.15",
     "@types/react": "^18.2.60",
     "@types/react-dom": "^18.2.19",
-    "@types/three": "^0.174.0",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.0.14",

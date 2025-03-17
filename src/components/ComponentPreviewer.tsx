@@ -1,17 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Editor } from '@monaco-editor/react';
+import { Editor, loader } from '@monaco-editor/react';
 import * as Babel from '@babel/standalone';
 import * as recharts from 'recharts';
-import * as d3 from 'd3';
-// @ts-ignore
-import * as Chart from 'chart.js';
-// @ts-ignore
-import * as Plotly from 'plotly.js-dist';
-import * as math from 'mathjs';
 import _ from 'lodash';
-// @ts-ignore
-import * as Tone from 'tone';
-import * as THREE from 'three';
 import Papa from 'papaparse';
 // React Icons
 import * as FaIcons from 'react-icons/fa';
@@ -137,13 +128,7 @@ const compileJSX = (code: string): React.ComponentType => {
       useReducer: React.useReducer,
       // Libraries
       recharts,
-      d3,
-      Chart,
-      Plotly,
-      math,
       _,
-      Tone,
-      THREE,
       Papa,
       // React Icons
       ...FaIcons, ...AiIcons, ...BiIcons, ...BsIcons, 
@@ -244,6 +229,16 @@ const compileJSX = (code: string): React.ComponentType => {
         plugins: ['transform-modules-commonjs'],
         filename: 'component.jsx'
       }).code;
+
+      // 特殊なコードでTailwind CSSの色を保持する
+      transformedCode = transformedCode.replace(/className=["']([^"']*)["']/g, (match: string, p1: string) => {
+        // クラス名を保持
+        if (p1.includes('text-') || p1.includes('bg-') || p1.includes('from-') || 
+            p1.includes('to-') || p1.includes('border-')) {
+          return `className="${p1}"`;
+        }
+        return match;
+      });
     } catch (babelError: unknown) {
       console.error('Babel transformation error:', babelError);
       const errorMessage = babelError instanceof Error ? babelError.message : 'Unknown Babel error';
@@ -315,6 +310,7 @@ const ComponentPreviewer: React.FC = () => {
   const [code, setCode] = useState<string>('');
   const [Component, setComponent] = useState<React.ComponentType | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editorTheme, setEditorTheme] = useState<string>('vs-dark');
   const [showCode, setShowCode] = useState<boolean>(false); // Default to closed
   const [hasLoadedComponent, setHasLoadedComponent] = useState<boolean>(false);
   const editorRef = useRef<any>(null);
@@ -373,6 +369,89 @@ export default CounterApp;`;
   };
 
   // Handle clipboard paste
+  // Configure Monaco editor with themes and features
+  useEffect(() => {
+    // Pre-configure Monaco with better syntax highlighting
+    loader.init().then((monaco) => {
+      // Set up better JSX/TSX highlighting
+      monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
+        jsx: monaco.languages.typescript.JsxEmit.React,
+        jsxFactory: 'React.createElement',
+        reactNamespace: 'React',
+        allowNonTsExtensions: true,
+        allowJs: true,
+        target: monaco.languages.typescript.ScriptTarget.Latest,
+      });
+
+      // Register better syntax highlighting for JSX
+      monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+        noSemanticValidation: false,
+        noSyntaxValidation: false,
+      });
+
+      // Load a theme with better highlighting for React code
+      monaco.editor.defineTheme('react-tailwind-dark', {
+        base: 'vs-dark',
+        inherit: true,
+        rules: [
+          // JSX Syntax highlighting
+          { token: 'delimiter.bracket.js', foreground: 'BBBBBB' },  // brackets
+          { token: 'delimiter.parenthesis.js', foreground: 'BBBBBB' }, // parentheses
+          { token: 'delimiter.angle.js', foreground: '569CD6' },   // angle brackets for JSX
+          { token: 'delimiter.curly.js', foreground: 'C586C0' },  // curly braces
+          
+          // Keywords & identifiers
+          { token: 'keyword.js', foreground: 'C586C0', fontStyle: 'bold' }, // keywords like import, export
+          { token: 'keyword.control.js', foreground: 'C586C0' },   // control keywords
+          { token: 'keyword.json', foreground: 'C586C0' },
+          { token: 'keyword.flow.js', foreground: 'C586C0' },      // flow control
+          { token: 'identifier.js', foreground: '9CDCFE' },        // variables
+          
+          // JSX components and attributes
+          { token: 'identifier.jsx', foreground: '4EC9B0' },       // JSX components
+          { token: 'tag.js', foreground: '569CD6' },              // JSX tags
+          { token: 'tag.id.js', foreground: '4EC9B0' },           // JSX element IDs
+          { token: 'tag.class.js', foreground: '4EC9B0' },        // JSX element classes
+          
+          // String literals with special handling for className values
+          { token: 'string.js', foreground: 'CE9178' },            // normal strings
+          { token: 'string.quote.js', foreground: 'CE9178' },      // quotation marks
+          
+          // Comments
+          { token: 'comment.js', foreground: '6A9955' },           // comments
+          
+          // Numbers and other values
+          { token: 'number.js', foreground: 'B5CEA8' },           // numbers
+          { token: 'regexp.js', foreground: 'D16969' },           // regular expressions
+          
+          // Functions
+          { token: 'entity.name.function.js', foreground: 'DCDCAA' }, // function names
+          { token: 'entity.name.class.js', foreground: '4EC9B0' },   // class names
+          
+          // Type annotations
+          { token: 'type.identifier.js', foreground: '4EC9B0' },   // type annotations
+          
+          // Special highlights for Tailwind color-related classes
+          { token: 'meta.tag.without-attributes.js', foreground: '569CD6' },
+          { token: 'meta.tag.attributes.js', foreground: '9CDCFE' }
+        ],
+        colors: {
+          'editor.foreground': '#D4D4D4',
+          'editor.background': '#1E1E1E',
+          'editorCursor.foreground': '#AEAFAD',
+          'editor.lineHighlightBackground': '#2D2D30',
+          'editorLineNumber.foreground': '#858585',
+          'editor.selectionBackground': '#264F78',
+          'editor.inactiveSelectionBackground': '#3A3D41',
+          'editorIndentGuide.background': '#404040',
+        }
+      });
+      
+      // Set the custom theme as default
+      setEditorTheme('react-tailwind-dark');
+    });
+  }, []);
+
   useEffect(() => {
     const handlePaste = (e: ClipboardEvent) => {
       // Allow paste in inputs and text areas
@@ -458,7 +537,7 @@ export default CounterApp;`;
         {/* Code editor */}
         {showCode && (
           <div className="w-1/2 border-r border-gray-200 flex flex-col">
-            <div className="flex-1 p-4 bg-gray-50">
+            <div className="flex-1 p-4 bg-gray-50" style={{ height: 'calc(80vh - 100px)' }}>
               <Editor
                 height="100%"
                 defaultLanguage="jsx"
@@ -479,11 +558,32 @@ export default CounterApp;`;
                   automaticLayout: true,
                   lineDecorationsWidth: 10,
                   colorDecorators: true,
+                  bracketPairColorization: { enabled: true },
+                  parameterHints: { enabled: true },
+                  suggestOnTriggerCharacters: true,
+                  snippetSuggestions: 'inline',
+                  codeLens: true
                 }}
-                theme="vs"
+                theme={editorTheme}
               />
             </div>
             <div className="p-4 border-t border-gray-200">
+              <div className="flex items-center justify-end mb-3">
+                <div className="flex items-center gap-2">
+                  <label htmlFor="theme-select" className="text-sm text-gray-600">Theme:</label>
+                  <select 
+                    id="theme-select"
+                    className="text-sm border rounded-md p-1"
+                    value={editorTheme}
+                    onChange={(e) => setEditorTheme(e.target.value)}
+                  >
+                    <option value="vs">Light</option>
+                    <option value="react-tailwind-dark">React Dark</option>
+                    <option value="vs-dark">Default Dark</option>
+                    <option value="hc-black">High Contrast</option>
+                  </select>
+                </div>
+              </div>
               <button 
                 className="w-full py-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-lg hover:opacity-90 transition-opacity"
                 onClick={() => compileAndSetComponent(code)}
@@ -499,7 +599,7 @@ export default CounterApp;`;
           <div 
             ref={previewRef} 
             className="flex-1 flex items-start justify-center p-8 pt-12 overflow-auto bg-gray-50"
-            style={{ minHeight: '80vh' }}
+            style={{ height: 'calc(80vh - 100px)' }}
           >
             {!hasLoadedComponent ? (
               <WelcomeScreen onLoadSample={loadSample} />
