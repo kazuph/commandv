@@ -2,7 +2,6 @@ import build from '@hono/vite-build/cloudflare-workers'
 import devServer from '@hono/vite-dev-server'
 import adapter from '@hono/vite-dev-server/cloudflare'
 import { defineConfig } from 'vite'
-import tailwindcss from '@tailwindcss/postcss'
 import autoprefixer from 'autoprefixer'
 
 export default defineConfig(({ mode }) => {
@@ -19,7 +18,6 @@ export default defineConfig(({ mode }) => {
       css: {
         postcss: {
           plugins: [
-            tailwindcss,
             autoprefixer,
           ],
         },
@@ -42,7 +40,6 @@ export default defineConfig(({ mode }) => {
       css: {
         postcss: {
           plugins: [
-            tailwindcss,
             autoprefixer,
           ],
         },

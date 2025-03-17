@@ -1,8 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import ComponentPreviewer from './components/ComponentPreviewer'
 import './styles/reset.css'
-import './styles/tailwind.css'
-import './styles/custom.css' // 追加：カスタムCSSの読み込み
+import './styles/custom.css' // カスタムCSSの読み込み
 
 function App() {
   return (
