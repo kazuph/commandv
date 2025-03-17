@@ -19,7 +19,7 @@ app.get('/api/clock', (c) => {
 app.get('*', (c) => {
   return c.html(
     renderToString(
-      <html style={{width: '100%', height: '100%', margin: 0, padding: 0}}>
+      <html style={{width: '100%', margin: 0, padding: 0}}>
         <head>
           <meta charSet="utf-8" />
           <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" name="viewport" />

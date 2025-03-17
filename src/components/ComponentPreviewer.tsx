@@ -548,7 +548,9 @@ export default CounterApp;`;
               </div>
             ) : Component ? (
               <React.Suspense fallback={<div>Loading...</div>}>
-                <Component />
+                <div className="w-full h-auto flex items-center justify-center" style={{ minHeight: 'auto' }}>
+                  <Component />
+                </div>
               </React.Suspense>
             ) : (
               <div className="text-gray-400 text-center">
