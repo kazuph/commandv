@@ -24,7 +24,10 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLoadSample }) => {
       
       <button 
         onClick={onLoadSample}
-        className="px-8 py-3 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full hover:opacity-90 transition-opacity"
+        className="px-8 py-3 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full hover:opacity-90 transition-opacity water-gradient"
+        style={{
+          background: 'linear-gradient(to bottom right, #3b82f6, #4f46e5)'
+        }}
       >
         View Sample
       </button>

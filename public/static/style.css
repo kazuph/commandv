@@ -1,1 +1,27 @@
 h1 { font-family: Arial, Helvetica, sans-serif; }
+
+/* 水色系のクラス */
+.from-cyan-300 { --tw-gradient-from: #67e8f9 !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(103, 232, 249, 0)) !important; }
+.from-cyan-400 { --tw-gradient-from: #22d3ee !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(34, 211, 238, 0)) !important; }
+.from-cyan-500 { --tw-gradient-from: #06b6d4 !important; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(6, 182, 212, 0)) !important; }
+
+.to-cyan-300 { --tw-gradient-to: #67e8f9 !important; }
+.to-cyan-400 { --tw-gradient-to: #22d3ee !important; }
+.to-cyan-500 { --tw-gradient-to: #06b6d4 !important; }
+
+.bg-cyan-300 { background-color: #67e8f9 !important; }
+.bg-cyan-400 { background-color: #22d3ee !important; }
+.bg-cyan-500 { background-color: #06b6d4 !important; }
+
+.text-cyan-300 { color: #67e8f9 !important; }
+.text-cyan-400 { color: #22d3ee !important; }
+.text-cyan-500 { color: #06b6d4 !important; }
+
+/* グラデーション背景のカスタム定義（既存のものを補強） */
+.from-blue-500.to-indigo-600 {
+  background-image: linear-gradient(to bottom right, #3b82f6, #4f46e5) !important;
+}
+
+.from-cyan-400.to-blue-500 {
+  background-image: linear-gradient(to bottom right, #22d3ee, #3b82f6) !important;
+}

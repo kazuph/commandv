@@ -231,15 +231,54 @@ const compileJSX = (code: string): React.ComponentType => {
         filename: 'component.jsx'
       }).code;
 
-      // 特殊なコードでTailwind CSSの色を保持する
+      // Tailwind CSSクラスを保持し、特定のクラスをインラインスタイルに変換するロジック
       transformedCode = transformedCode.replace(/className=["']([^"']*)["']/g, (match: string, p1: string) => {
-        // クラス名を保持
-        if (p1.includes('text-') || p1.includes('bg-') || p1.includes('from-') || 
-            p1.includes('to-') || p1.includes('border-')) {
-          return `className="${p1}"`;
+        // もとのクラス名をログに出力（デバッグ用）
+        console.log('Original className:', p1);
+        
+        // 水色系グラデーションを使っているか確認
+        const hasCyanClasses = p1.includes('from-cyan-') || p1.includes('bg-cyan-') || p1.includes('text-cyan-');
+        const hasBlueCyanGradient = p1.includes('bg-gradient') && 
+                                 (p1.includes('from-cyan-') || p1.includes('to-cyan-'));
+        
+        // インラインスタイルを追加するかどうか
+        let styleAttribute = '';
+        if (hasCyanClasses) {
+          // シアンの背景色
+          if (p1.includes('bg-cyan-300')) styleAttribute = 'style={{backgroundColor: "#67e8f9"}}';
+          else if (p1.includes('bg-cyan-400')) styleAttribute = 'style={{backgroundColor: "#22d3ee"}}';
+          else if (p1.includes('bg-cyan-500')) styleAttribute = 'style={{backgroundColor: "#06b6d4"}}';
+          else if (p1.includes('bg-cyan-600')) styleAttribute = 'style={{backgroundColor: "#0891b2"}}';
+          
+          // シアンのテキスト色
+          else if (p1.includes('text-cyan-400')) styleAttribute = 'style={{color: "#22d3ee"}}';
+          else if (p1.includes('text-cyan-500')) styleAttribute = 'style={{color: "#06b6d4"}}';
         }
-        return match;
+        else if (hasBlueCyanGradient) {
+          // グラデーション
+          if (p1.includes('from-cyan-400')) {
+            styleAttribute = 'style={{background: "linear-gradient(to bottom right, #22d3ee, var(--tw-gradient-to, #fff))"}}';
+          }
+          else if (p1.includes('to-cyan-400')) {
+            styleAttribute = 'style={{background: "linear-gradient(to bottom right, var(--tw-gradient-from, #fff), #22d3ee)"}}';
+          }
+        }
+        
+        // スタイル属性が追加された場合、それを含めて返す
+        if (styleAttribute) {
+          return `className="${p1}" ${styleAttribute}`;
+        }
+        
+        // スタイル属性がない場合は、クラス名をそのまま維持
+        return `className="${p1}"`;
       });
+      
+      // グラデーション関連のクラスを特に注意深く保持する
+      transformedCode = transformedCode.replace(/bg-gradient-to-br/g, 'bg-gradient-to-br');
+      transformedCode = transformedCode.replace(/from-cyan-(\d+)/g, 'from-cyan-$1');
+      transformedCode = transformedCode.replace(/to-cyan-(\d+)/g, 'to-cyan-$1');
+      transformedCode = transformedCode.replace(/from-blue-(\d+)/g, 'from-blue-$1');
+      transformedCode = transformedCode.replace(/to-indigo-(\d+)/g, 'to-indigo-$1');
     } catch (babelError: unknown) {
       console.error('Babel transformation error:', babelError);
       const errorMessage = babelError instanceof Error ? babelError.message : 'Unknown Babel error';
@@ -307,6 +346,17 @@ const compileJSX = (code: string): React.ComponentType => {
   }
 };
 
+// テスト用のダミー要素（ビルド時にTailwindに検知させるため）
+const TailwindClassesForDetection = () => (
+  <div className="hidden">
+    {/* 水色系クラスを明示的に含める */}
+    <div className="from-cyan-400 from-cyan-500 from-blue-400 from-blue-500 from-blue-600"></div>
+    <div className="to-blue-500 to-blue-600 to-indigo-500 to-indigo-600 to-cyan-400 to-cyan-500"></div>
+    <div className="bg-gradient-to-br bg-gradient-to-r"></div>
+    <div className="text-white"></div>
+  </div>
+);
+
 const ComponentPreviewer: React.FC = () => {
   const [code, setCode] = useState<string>('');
   const [Component, setComponent] = useState<React.ComponentType | null>(null);
@@ -322,6 +372,17 @@ const ComponentPreviewer: React.FC = () => {
 
 const CounterApp = () => {
   const [count, setCount] = useState(0);
+  
+  // 水色グラデーション用のスタイル（バックアップ）
+  const cyanGradientStyle = {
+    background: 'linear-gradient(to bottom right, #22d3ee, #06b6d4)',
+    color: 'white'
+  };
+  
+  const blueGradientStyle = {
+    background: 'linear-gradient(to bottom right, #3b82f6, #4f46e5)',
+    color: 'white'
+  };
   
   return (
     <div className="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-md max-w-sm mx-auto">
@@ -351,6 +412,7 @@ const CounterApp = () => {
         <button 
           onClick={() => setCount(count + 1)}
           className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white hover:opacity-90 flex items-center justify-center text-xl font-light transition-colors shadow-sm"
+          style={blueGradientStyle}
           aria-label="Increase"
         >
           +

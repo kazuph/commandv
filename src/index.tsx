@@ -40,7 +40,11 @@ app.get('*', (c) => {
               -moz-osx-font-smoothing: grayscale;
             }
           `}} />
-          <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+          {/* CDNからTailwind CSSを読み込む */}
+          <link href="https://cdn.jsdelivr.net/npm/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet" />
+          <link href="https://cdn.jsdelivr.net/npm/tailwindcss@^2/dist/components.min.css" rel="stylesheet" />
+          <link href="https://cdn.jsdelivr.net/npm/tailwindcss@^2/dist/utilities.min.css" rel="stylesheet" />
+          <link href="/static/style.css" rel="stylesheet" />
           {import.meta.env.PROD ? (
             <script type="module" src="/static/client.js"></script>
           ) : (
