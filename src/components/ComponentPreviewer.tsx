@@ -1,27 +1,30 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Editor from '@monaco-editor/react';
+
+// highlight.jsとESBuildを使うためのWindow拡張インターフェース
+declare global {
+  interface Window {
+    hljs?: {
+      highlightAll: () => void;
+    };
+    esbuild?: {
+      transform: (code: string, options: any) => Promise<{
+        code: string;
+        map: string;
+        warnings: any[];
+      }>;
+      initialize: (options: any) => Promise<void>;
+    };
+  }
+}
+
 import * as htmlToImage from 'html-to-image';
-import * as Babel from '@babel/standalone';
+// グラフライブラリなど
 import * as recharts from 'recharts';
 import _ from 'lodash';
 import Papa from 'papaparse';
-// React Icons
-import * as FaIcons from 'react-icons/fa';
-import * as AiIcons from 'react-icons/ai';
-import * as BiIcons from 'react-icons/bi';
-import * as BsIcons from 'react-icons/bs';
-import * as FiIcons from 'react-icons/fi';
-import * as GoIcons from 'react-icons/go';
-import * as GrIcons from 'react-icons/gr';
-import * as HiIcons from 'react-icons/hi';
-import * as ImIcons from 'react-icons/im';
-import * as IoIcons from 'react-icons/io';
-import * as IoIcons5 from 'react-icons/io5';
-import * as MdIcons from 'react-icons/md';
-import * as RiIcons from 'react-icons/ri';
-import * as SiIcons from 'react-icons/si';
-import * as TiIcons from 'react-icons/ti';
-import * as VscIcons from 'react-icons/vsc';
+// 必要なアイコンのみをインポート
+import { FaGithub } from 'react-icons/fa';
 
 import AppleLogo from './AppleLogo';
 import WelcomeScreen from './WelcomeScreen';
@@ -93,9 +96,36 @@ const downloadElementAsImage = (element: HTMLElement, fileName: string, format: 
   captureElement();
 };
 
+// Add syntax highlighter script and ESBuild to head
+const addScriptsToHead = () => {
+  // ESBuildを追加
+  const esbuildScript = document.createElement('script');
+  esbuildScript.src = 'https://unpkg.com/esbuild-wasm@0.14.54/lib/browser.min.js';
+  esbuildScript.async = true;
+  
+  // ESBuildスクリプトの読み込み完了後に初期化を実行
+  esbuildScript.onload = () => {
+    // ESBuildの初期化
+    if (window.esbuild) {
+      window.esbuild.initialize({
+        wasmURL: 'https://unpkg.com/esbuild-wasm@0.14.54/esbuild.wasm'
+      }).catch(e => {
+        console.error('Failed to initialize esbuild:', e);
+      });
+    }
+  };
+
+  document.head.appendChild(esbuildScript);
+};
+
 // Safe component execution function
-const compileJSX = (code: string): React.ComponentType => {
+const compileJSX = async (code: string): Promise<React.ComponentType> => {
   try {
+    // ESBuildを使用してJSXをトランスフォーム（Babelの代わり）
+    if (!window.esbuild) {
+      throw new Error('ESBuild not loaded. Please try again in a moment.');
+    }
+    
     // Add libraries to scope
     const scope: Record<string, any> = {
       React,
@@ -110,11 +140,8 @@ const compileJSX = (code: string): React.ComponentType => {
       recharts,
       _,
       Papa,
-      // React Icons
-      ...FaIcons, ...AiIcons, ...BiIcons, ...BsIcons, 
-      ...FiIcons, ...GoIcons, ...GrIcons, ...HiIcons, 
-      ...ImIcons, ...IoIcons, ...IoIcons5, ...MdIcons,
-      ...RiIcons, ...SiIcons, ...TiIcons, ...VscIcons,
+      // React Icons（必要なものだけを追加）
+      FaGithub,
     };
 
     // Strip import/export statements (more carefully)
@@ -201,24 +228,25 @@ const compileJSX = (code: string): React.ComponentType => {
     // Log for debugging
     console.log('Detected component name:', componentName);
 
-    // Transform JSX with Babel with better error handling
+    // Transform JSX with ESBuild instead of Babel (much smaller bundle size)
     let transformedCode;
     try {
-      transformedCode = Babel.transform(strippedCode, {
-        presets: ['react', 'env'],
-        plugins: ['transform-modules-commonjs'],
-        filename: 'component.jsx'
-      }).code;
-
-      // クラス名を維持するシンプルな処理
-      transformedCode = transformedCode.replace(/className=["']([^"']*)["']/g, (match: string, p1: string) => {
-        // すべてのクラス名をそのまま維持
-        return `className="${p1}"`;
+      const result = await window.esbuild?.transform(strippedCode, {
+        loader: 'jsx',
+        jsxFactory: 'React.createElement',
+        jsxFragment: 'React.Fragment',
+        target: 'es2015'
       });
-    } catch (babelError: unknown) {
-      console.error('Babel transformation error:', babelError);
-      const errorMessage = babelError instanceof Error ? babelError.message : 'Unknown Babel error';
-      throw new Error(`Babel couldn't transform the code: ${errorMessage}`);
+
+      if (!result || !result.code) {
+        throw new Error('Failed to transform JSX');
+      }
+
+      transformedCode = result.code;
+    } catch (transformError: unknown) {
+      console.error('ESBuild transformation error:', transformError);
+      const errorMessage = transformError instanceof Error ? transformError.message : 'Unknown transformation error';
+      throw new Error(`Couldn't transform the code: ${errorMessage}`);
     }
 
     // Create more robust executable component function
@@ -282,15 +310,11 @@ const compileJSX = (code: string): React.ComponentType => {
   }
 };
 
-
 const ComponentPreviewer: React.FC = () => {
   const [code, setCode] = useState<string>('');
-  const [Component, setComponent] = useState<React.ComponentType | null>(null);
+  const [component, setComponent] = useState<React.ComponentType | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editorTheme, setEditorTheme] = useState<string>('vs-dark');
   const [showCode, setShowCode] = useState<boolean>(false); // Default to closed
-  const [hasLoadedComponent, setHasLoadedComponent] = useState<boolean>(false);
-  const editorRef = useRef<any>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
   // Sample code for the counter app (Apple style)
@@ -354,7 +378,6 @@ export default CounterApp;`;
   const loadSample = () => {
     setCode(sampleCode);
     compileAndSetComponent(sampleCode);
-    setHasLoadedComponent(true);
   };
 
   // Handle clipboard paste
@@ -365,15 +388,13 @@ export default CounterApp;`;
       const isEditorActive = 
         activeElement?.tagName === 'INPUT' || 
         activeElement?.tagName === 'TEXTAREA' || 
-        activeElement?.getAttribute('role') === 'textbox' ||
-        activeElement?.classList.contains('monaco-editor');
+        activeElement?.getAttribute('role') === 'textbox';
         
       if (!isEditorActive) {
         e.preventDefault();
         const pastedCode = e.clipboardData?.getData('text') || '';
         setCode(pastedCode);
         compileAndSetComponent(pastedCode);
-        setHasLoadedComponent(true);
       }
     };
 
@@ -384,9 +405,9 @@ export default CounterApp;`;
   }, []);
 
   // Compile code and set component
-  const compileAndSetComponent = (codeToCompile: string) => {
+  const compileAndSetComponent = async (codeToCompile: string) => {
     try {
-      const CompiledComponent = compileJSX(codeToCompile);
+      const CompiledComponent = await compileJSX(codeToCompile);
       setComponent(() => CompiledComponent);
       setError(null);
     } catch (err) {
@@ -395,10 +416,10 @@ export default CounterApp;`;
     }
   };
 
-  // Editor setup
-  const handleEditorDidMount = (editor: any) => {
-    editorRef.current = editor;
-  };
+  // Load ESBuild when component mounts
+  useEffect(() => {
+    addScriptsToHead();
+  }, []);
 
   // Download preview as image with improved styling
   const handleDownloadPreview = () => {
@@ -462,7 +483,6 @@ export default CounterApp;`;
           <button
             className="px-4 py-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-md hover:opacity-90 transition-opacity text-sm"
             onClick={handleDownloadPreview}
-            disabled={!hasLoadedComponent}
           >
             Save as Image
           </button>
@@ -475,51 +495,29 @@ export default CounterApp;`;
         {showCode && (
           <div className="w-1/2 border-r border-gray-200 flex flex-col">
             <div className="flex-1 p-4 bg-gray-50" style={{ height: 'calc(80vh - 100px)' }}>
-              <Editor
-                height="100%"
-                defaultLanguage="javascript"
-                value={code}
-                onChange={(value) => setCode(value || '')}
-                onMount={handleEditorDidMount}
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 14,
-                  tabSize: 2,
-                  scrollBeyondLastLine: false,
-                  wordWrap: 'on',
-                  lineNumbers: 'on',
-                  formatOnPaste: true,
-                  renderLineHighlight: 'all',
-                  fontLigatures: true,
-                  folding: true,
-                  automaticLayout: true,
-                  lineDecorationsWidth: 10,
-                  colorDecorators: true,
-                  bracketPairColorization: { enabled: true },
-                  parameterHints: { enabled: true },
-                  suggestOnTriggerCharacters: true,
-                  snippetSuggestions: 'inline',
-                  codeLens: true
-                }}
-                theme={editorTheme}
-              />
+              {/* Monaco Editor */}
+              <div className="border rounded-md overflow-hidden w-full h-full">
+                <Editor
+                  height="100%"
+                  defaultLanguage="javascript"
+                  theme="vs-dark"
+                  value={code}
+                  onChange={(value) => {
+                    setCode(value || '');
+                    if (value) {
+                      compileAndSetComponent(value);
+                    }
+                  }}
+                  options={{
+                    minimap: { enabled: false },
+                    fontSize: 14,
+                    wordWrap: 'on',
+                    automaticLayout: true
+                  }}
+                />
+              </div>
             </div>
             <div className="p-4 border-t border-gray-200">
-              <div className="flex items-center justify-end mb-3">
-                <div className="flex items-center gap-2">
-                  <label htmlFor="theme-select" className="text-sm text-gray-600">Theme:</label>
-                  <select 
-                    id="theme-select"
-                    className="text-sm border rounded-md p-1"
-                    value={editorTheme}
-                    onChange={(e) => setEditorTheme(e.target.value)}
-                  >
-                    <option value="vs">Light</option>
-                    <option value="vs-dark">Dark</option>
-                    <option value="hc-black">High Contrast</option>
-                  </select>
-                </div>
-              </div>
               <button 
                 className="w-full py-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-lg hover:opacity-90 transition-opacity"
                 onClick={() => compileAndSetComponent(code)}
@@ -537,25 +535,23 @@ export default CounterApp;`;
             className="flex-1 flex items-start justify-center p-8 pt-12 overflow-auto bg-gray-50"
             style={{ height: 'calc(80vh - 100px)' }}
           >
-            {!hasLoadedComponent ? (
-              <WelcomeScreen onLoadSample={loadSample} />
-            ) : error ? (
+            {error ? (
               <div className="bg-red-50 p-6 rounded-lg w-full max-w-2xl">
                 <div className="text-red-500 whitespace-pre-wrap mb-4">
                   {error}
                 </div>
-                {Component && <Component />}
+                {component && React.createElement(component)}
               </div>
-            ) : Component ? (
-              <React.Suspense fallback={<div>Loading...</div>}>
-                <div className="w-full h-auto flex items-center justify-center" style={{ minHeight: 'auto' }}>
-                  <Component />
-                </div>
-              </React.Suspense>
             ) : (
-              <div className="text-gray-400 text-center">
-                Paste component code to preview
-              </div>
+              component ? (
+                <React.Suspense fallback={<div>Loading...</div>}>
+                  <div className="w-full h-auto flex items-center justify-center" style={{ minHeight: 'auto' }}>
+                    {React.createElement(component)}
+                  </div>
+                </React.Suspense>
+              ) : (
+                <WelcomeScreen onLoadSample={loadSample} />
+              )
             )}
           </div>
         </div>
