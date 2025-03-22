@@ -24,8 +24,7 @@ import * as recharts from 'recharts';
 import _ from 'lodash';
 import Papa from 'papaparse';
 // 必要なアイコンのみをインポート
-import { FaGithub, FaCode } from 'react-icons/fa';
-import { MdFileDownload } from 'react-icons/md';
+import { FaGithub } from 'react-icons/fa';
 
 import AppleLogo from './AppleLogo';
 import WelcomeScreen from './WelcomeScreen';
@@ -475,21 +474,17 @@ export default CounterApp;`;
         
         <div className="flex items-center gap-4">
           <button 
-            className="p-2.5 flex items-center justify-center rounded-md bg-gray-100 hover:bg-gray-200 transition-colors"
+            className="px-3 py-1 flex items-center justify-center rounded-md bg-gray-100 hover:bg-gray-200 transition-colors text-sm"
             onClick={() => setShowCode(!showCode)}
-            aria-label={showCode ? "Hide Code" : "Show Code"}
-            title={showCode ? "Hide Code" : "Show Code"}
           >
-            <FaCode size={20} />
+            {showCode ? "Hide Code" : "Show Code"}
           </button>
           
           <button
-            className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-md hover:opacity-90 transition-opacity"
+            className="px-4 py-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-md hover:opacity-90 transition-opacity text-sm"
             onClick={handleDownloadPreview}
-            aria-label="Save as Image"
-            title="Save as Image"
           >
-            <MdFileDownload size={20} />
+            Save as Image
           </button>
         </div>
       </header>
@@ -550,7 +545,7 @@ export default CounterApp;`;
             ) : (
               component ? (
                 <React.Suspense fallback={<div>Loading...</div>}>
-                  <div className="w-full h-auto flex items-center justify-center" style={{ minHeight: 'auto' }}>
+                  <div className="w-full h-auto items-center justify-center" style={{ minHeight: 'auto' }}>
                     {React.createElement(component)}
                   </div>
                 </React.Suspense>
