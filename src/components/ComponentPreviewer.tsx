@@ -15,6 +15,7 @@ declare global {
       }>;
       initialize: (options: any) => Promise<void>;
     };
+    d3: any; // D3.jsをグローバルに利用可能にする
   }
 }
 
@@ -103,6 +104,11 @@ const addScriptsToHead = () => {
   esbuildScript.src = 'https://unpkg.com/esbuild-wasm@0.14.54/lib/browser.min.js';
   esbuildScript.async = true;
   
+  // D3.jsをCDNから追加
+  const d3Script = document.createElement('script');
+  d3Script.src = 'https://d3js.org/d3.v7.min.js';
+  d3Script.async = true;
+  
   // ESBuildスクリプトの読み込み完了後に初期化を実行
   esbuildScript.onload = () => {
     // ESBuildの初期化
@@ -115,6 +121,7 @@ const addScriptsToHead = () => {
     }
   };
 
+  document.head.appendChild(d3Script);
   document.head.appendChild(esbuildScript);
 };
 
@@ -140,6 +147,8 @@ const compileJSX = async (code: string): Promise<React.ComponentType> => {
       recharts,
       _,
       Papa,
+      // D3.js
+      d3: window.d3,
       // React Icons（必要なものだけを追加）
       FaGithub,
     };
