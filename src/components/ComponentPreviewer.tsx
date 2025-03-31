@@ -162,37 +162,34 @@ const compileJSX = async (code: string): Promise<React.ComponentType> => {
       .replace(/import\s+{.*?}\s+from\s+['"].*?['"]\s*;?/g, '')
       .replace(/import\s+['"].*?['"]\s*;?/g, '');
     
-    // Save any component name from default export for later use
-    let defaultExportMatch = strippedCode.match(/export\s+default\s+([A-Z][A-Za-z0-9_]*)/);
-    let defaultExportName = defaultExportMatch ? defaultExportMatch[1] : null;
+    // 優先的にexport defaultで定義されたコンポーネントを検出する
+    const defaultExportPattern = /export\s+default\s+([A-Z][A-Za-z0-9_]*)/;
+    let defaultExportMatch = code.match(defaultExportPattern);
+    let componentName: string | null = defaultExportMatch ? defaultExportMatch[1] : null;
+    
+    // export default が見つからない場合は他のパターンを検索
+    if (!componentName) {
+      // Component detection regex patterns (improved)
+      const constComponentPattern = /const\s+([A-Z][A-Za-z0-9_]*)\s*=\s*(?:\(|\s*=>|\s*function\s*\()/;
+      const functionComponentPattern = /function\s+([A-Z][A-Za-z0-9_]*)\s*\(/;
+      const classComponentPattern = /class\s+([A-Z][A-Za-z0-9_]*)\s+extends\s+(?:React\.)?Component/;
+      
+      let match: RegExpExecArray | null;
+      
+      if ((match = constComponentPattern.exec(strippedCode)) !== null) {
+        componentName = match[1];
+      } else if ((match = functionComponentPattern.exec(strippedCode)) !== null) {
+        componentName = match[1];
+      } else if ((match = classComponentPattern.exec(strippedCode)) !== null) {
+        componentName = match[1];
+      }
+    }
     
     // Remove exports
     strippedCode = strippedCode
       .replace(/export\s+default\s+[A-Z][A-Za-z0-9_]*/g, '')
       .replace(/export\s+default\s+/g, '')
       .replace(/export\s+/g, '');
-
-    // Component detection regex patterns (improved)
-    const constComponentPattern = /const\s+([A-Z][A-Za-z0-9_]*)\s*=\s*(?:\(|\s*=>|\s*function\s*\()/;
-    const functionComponentPattern = /function\s+([A-Z][A-Za-z0-9_]*)\s*\(/;
-    const classComponentPattern = /class\s+([A-Z][A-Za-z0-9_]*)\s+extends\s+(?:React\.)?Component/;
-
-    // Detect component name
-    let componentName: string | null = null;
-    let match: RegExpExecArray | null;
-
-    if ((match = constComponentPattern.exec(strippedCode)) !== null) {
-      componentName = match[1];
-    } else if ((match = functionComponentPattern.exec(strippedCode)) !== null) {
-      componentName = match[1];
-    } else if ((match = classComponentPattern.exec(strippedCode)) !== null) {
-      componentName = match[1];
-    }
-    
-    // Use the default export name if we found one earlier
-    if (!componentName && defaultExportName) {
-      componentName = defaultExportName;
-    }
 
     // If component name not found, try additional detection methods
     if (!componentName) {
