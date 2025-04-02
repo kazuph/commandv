@@ -98,7 +98,7 @@ const downloadElementAsImage = (element: HTMLElement, fileName: string, format: 
 };
 
 // Add syntax highlighter script and ESBuild to head
-const addScriptsToHead = () => {
+const addScriptsToHead = (onEsbuildReady: () => void) => {
   // ESBuildを追加
   const esbuildScript = document.createElement('script');
   esbuildScript.src = 'https://unpkg.com/esbuild-wasm@0.14.54/lib/browser.min.js';
@@ -115,6 +115,9 @@ const addScriptsToHead = () => {
     if (window.esbuild) {
       window.esbuild.initialize({
         wasmURL: 'https://unpkg.com/esbuild-wasm@0.14.54/esbuild.wasm'
+      }).then(() => {
+        console.log('ESBuild初期化完了');
+        onEsbuildReady(); // 初期化完了後のコールバック
       }).catch(e => {
         console.error('Failed to initialize esbuild:', e);
       });
@@ -321,7 +324,12 @@ const ComponentPreviewer: React.FC = () => {
   const [component, setComponent] = useState<React.ComponentType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showCode, setShowCode] = useState<boolean>(false); // Default to closed
+  const [mode, setMode] = useState<'react' | 'html'>('react'); // モード：ReactコードかHTMLか
+  const [esbuildReady, setEsbuildReady] = useState<boolean>(false); // ESBuildの初期化状態
+  const [pendingCode, setPendingCode] = useState<string | null>(null); // 初期化待ちのコード
   const previewRef = useRef<HTMLDivElement>(null);
+  const componentRef = useRef<HTMLDivElement>(null); // コンポーネント自体を参照するためのref
+  const htmlPreviewRef = useRef<HTMLIFrameElement>(null);
 
   // Sample code for the counter app (Apple style)
   const sampleCode = `import { useState } from 'react';
@@ -380,10 +388,42 @@ const CounterApp = () => {
 
 export default CounterApp;`;
 
-  // Load sample code
+  // HTML用のサンプルコード
+  const sampleHtmlCode = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>シンプルなHTMLサンプル</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-3xl mx-auto bg-white p-6 rounded-xl shadow-md">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">HTMLプレビュー</h1>
+        <p class="text-gray-600 mb-4">
+            この部分はHTMLとしてプレビューされます。
+            Tailwind CSSも利用可能です。
+        </p>
+        <div class="bg-blue-100 p-4 rounded-lg mb-4">
+            <p class="text-blue-800">
+                ここにはHTMLコードを直接記述できます。
+            </p>
+        </div>
+        <button class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded hover:opacity-90 transition-opacity">
+            ボタンサンプル
+        </button>
+    </div>
+</body>
+</html>`;
+
+  // サンプルコードを読み込む
   const loadSample = () => {
-    setCode(sampleCode);
-    compileAndSetComponent(sampleCode);
+    // 現在のモードに基づいてサンプルを選択
+    const sampleToLoad = mode === 'html' ? sampleHtmlCode : sampleCode;
+    setCode(sampleToLoad);
+    
+    // 自動判定も実行
+    compileAndSetComponent(sampleToLoad);
   };
 
   // Handle clipboard paste
@@ -391,9 +431,9 @@ export default CounterApp;`;
     const handlePaste = (e: ClipboardEvent) => {
       // Allow paste in inputs and text areas
       const activeElement = document.activeElement;
-      const isEditorActive = 
-        activeElement?.tagName === 'INPUT' || 
-        activeElement?.tagName === 'TEXTAREA' || 
+      const isEditorActive =
+        activeElement?.tagName === 'INPUT' ||
+        activeElement?.tagName === 'TEXTAREA' ||
         activeElement?.getAttribute('role') === 'textbox';
         
       if (!isEditorActive) {
@@ -408,10 +448,62 @@ export default CounterApp;`;
     return () => {
       document.removeEventListener('paste', handlePaste);
     };
-  }, []);
+  }, [mode]); // modeが変わったときにも適用されるようにする
+
+  // HTMLかReactかを判定する関数
+  const detectCodeType = (code: string): 'react' | 'html' => {
+    // HTMLの特徴を検出
+    const htmlFeatures = [
+      /<!DOCTYPE\s+html>/i.test(code),
+      /<html/i.test(code),
+      /<head>/.test(code),
+      /<body/.test(code)
+    ];
+    
+    // Reactの特徴を検出
+    const reactFeatures = [
+      /import\s+.*from\s+/i.test(code),
+      /export\s+default\s+/i.test(code),
+      /function\s+[A-Z][A-Za-z0-9]*\s*\(/i.test(code),
+      /const\s+[A-Z][A-Za-z0-9]*\s*=/i.test(code) && /=>\s*{/.test(code),
+      /useState|useEffect|useRef|React\.Component/i.test(code)
+    ];
+    
+    // 特徴の数を数える
+    const htmlFeatureCount = htmlFeatures.filter(Boolean).length;
+    const reactFeatureCount = reactFeatures.filter(Boolean).length;
+    
+    // より多くの特徴がある方を選択
+    return htmlFeatureCount > reactFeatureCount ? 'html' : 'react';
+  };
 
   // Compile code and set component
   const compileAndSetComponent = async (codeToCompile: string) => {
+    // Reactモードでかつ、ESBuildが初期化されていない場合は待機
+    if (!esbuildReady && detectCodeType(codeToCompile) === 'react') {
+      console.log('ESBuild初期化待ち - コードを保存します');
+      setPendingCode(codeToCompile);
+      return;
+    }
+    
+    // コードタイプを自動判定
+    const detectedMode = detectCodeType(codeToCompile);
+    
+    // 必要な場合はモードを更新
+    if (mode !== detectedMode) {
+      setMode(detectedMode);
+      console.log(`コードタイプを自動判定: ${detectedMode}`);
+    }
+    
+    if (detectedMode === 'html') {
+      // HTMLモードではコンパイル不要
+      setComponent(null);
+      setError(null);
+      // HTMLプレビューの更新はレンダリング時に行う
+      return;
+    }
+    
+    // Reactモードの場合
     try {
       const CompiledComponent = await compileJSX(codeToCompile);
       setComponent(() => CompiledComponent);
@@ -424,27 +516,99 @@ export default CounterApp;`;
 
   // Load ESBuild when component mounts
   useEffect(() => {
-    addScriptsToHead();
-  }, []);
+    // ESBuild初期化完了時のコールバック
+    const handleEsbuildReady = () => {
+      setEsbuildReady(true);
+      
+      // 初期化待ちのコードがあれば処理する
+      if (pendingCode) {
+        compileAndSetComponent(pendingCode);
+        setPendingCode(null);
+      }
+    };
+    
+    addScriptsToHead(handleEsbuildReady);
+  }, [pendingCode]);
 
   // Download preview as image with improved styling
   const handleDownloadPreview = () => {
-    if (previewRef.current) {
-      const element = previewRef.current;
+    // HTMLモードの場合
+    if (mode === 'html' && htmlPreviewRef.current) {
+      try {
+        const iframe = htmlPreviewRef.current;
+        
+        // iframeのコンテンツをキャプチャするためのCanvasを作成
+        const captureIframe = async () => {
+          // iframeのサイズを取得
+          const width = iframe.offsetWidth;
+          const height = iframe.offsetHeight;
+          
+          // 画像としてキャプチャするためのCanvasを作成
+          const canvas = document.createElement('canvas');
+          canvas.width = width * 2; // 高解像度対応
+          canvas.height = height * 2;
+          
+          // iframeのコンテンツを新しいウィンドウにクローンして処理
+          const iframeDoc = iframe.contentDocument;
+          if (!iframeDoc) {
+            console.error('iframe document not available');
+            return;
+          }
+          
+          // HTMLの実際のコンテンツサイズを取得
+          const htmlBody = iframeDoc.body;
+          const contentWidth = htmlBody.scrollWidth;
+          const contentHeight = htmlBody.scrollHeight;
+          
+          // HTML内の最初の要素を取得（通常はbodyの最初の子要素）
+          // これは余白なしでコンテンツのみをキャプチャするため
+          const mainContent = htmlBody.firstElementChild || htmlBody;
+          
+          // html-to-imageでコンテンツのみをキャプチャ
+          const dataUrl = await htmlToImage.toPng(mainContent as HTMLElement, {
+            width: contentWidth,
+            height: contentHeight,
+            pixelRatio: 2,
+            quality: 1.0,
+            skipFonts: false,
+            backgroundColor: 'white'
+          });
+          
+          // 画像をダウンロード
+          const link = document.createElement('a');
+          link.download = 'commandv-html-preview.png';
+          link.href = dataUrl;
+          link.click();
+        };
+        
+        captureIframe();
+      } catch (err) {
+        console.error('Failed to capture iframe:', err);
+      }
+      return;
+    }
+    
+    // Reactモードの場合
+    if (component && componentRef.current) {
+      // コンポーネント自体だけをキャプチャする
+      const element = componentRef.current;
       
-      // First apply computed styles to ensure all styling is captured
+      // スタイル情報を取得
       const styles = window.getComputedStyle(element);
       const originalElementStyle = element.getAttribute('style') || '';
-      let additionalStyles = 'background-color: ' + styles.backgroundColor + '; ';
-      additionalStyles += 'color: ' + styles.color + '; ';
-      additionalStyles += 'padding: ' + styles.padding + '; ';
       
-      // Apply the combined styles temporarily for the capture
+      // コンポーネントはすでに自身のスタイルを持っているため、必要最小限の追加スタイルのみ適用
+      let additionalStyles = '';
+      if (!styles.backgroundColor || styles.backgroundColor === 'transparent') {
+        additionalStyles += 'background-color: white; ';
+      }
+      
+      // 一時的にスタイルを適用
       element.setAttribute('style', originalElementStyle + additionalStyles);
       
-      // Capture the element with html-to-image for better gradient support
+      // コンポーネント自体だけをキャプチャ
       htmlToImage.toPng(element, {
-        backgroundColor: styles.backgroundColor || '#f9fafb',
+        backgroundColor: 'white',
         pixelRatio: 2, // Higher resolution
         quality: 1.0,
         skipFonts: false, // Include fonts for better text rendering
@@ -478,8 +642,9 @@ export default CounterApp;`;
           <h1 className="text-2xl font-light">CommandV</h1>
         </div>
         
-        <div className="flex items-center gap-4">
-          <button 
+        <div className="flex items-center gap-3">
+          
+          <button
             className="px-3 py-1 flex items-center justify-center rounded-md bg-gray-100 hover:bg-gray-200 transition-colors text-sm"
             onClick={() => setShowCode(!showCode)}
           >
@@ -505,7 +670,7 @@ export default CounterApp;`;
               <div className="border rounded-md overflow-hidden w-full h-full">
                 <Editor
                   height="100%"
-                  defaultLanguage="javascript"
+                  defaultLanguage={mode === 'html' ? "html" : "javascript"}
                   theme="vs-dark"
                   value={code}
                   onChange={(value) => {
@@ -524,11 +689,11 @@ export default CounterApp;`;
               </div>
             </div>
             <div className="p-4 border-t border-gray-200">
-              <button 
+              <button
                 className="w-full py-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-lg hover:opacity-90 transition-opacity"
                 onClick={() => compileAndSetComponent(code)}
               >
-                Run Code
+                プレビュー表示
               </button>
             </div>
           </div>
@@ -536,30 +701,63 @@ export default CounterApp;`;
         
         {/* Preview */}
         <div className={`${showCode ? 'w-1/2' : 'w-full'} flex flex-col overflow-hidden`}>
-          <div 
-            ref={previewRef} 
-            className="flex-1 flex items-start justify-center p-8 pt-12 overflow-auto bg-gray-50"
-            style={{ height: 'calc(80vh - 100px)' }}
-          >
-            {error ? (
-              <div className="bg-red-50 p-6 rounded-lg w-full max-w-2xl">
-                <div className="text-red-500 whitespace-pre-wrap mb-4">
-                  {error}
-                </div>
-                {component && React.createElement(component)}
-              </div>
-            ) : (
-              component ? (
-                <React.Suspense fallback={<div>Loading...</div>}>
-                  <div className="w-full h-auto items-center justify-center" style={{ minHeight: 'auto' }}>
-                    {React.createElement(component)}
-                  </div>
-                </React.Suspense>
+          {mode === 'html' ? (
+            // HTMLモードのプレビュー
+            <div className="flex-1 flex flex-col overflow-hidden bg-gray-50" style={{ height: 'calc(80vh - 100px)' }}>
+              {code ? (
+                <iframe
+                  ref={htmlPreviewRef}
+                  className="w-full h-full border-none"
+                  srcDoc={code}
+                  title="HTML Preview"
+                  sandbox="allow-scripts allow-same-origin"
+                ></iframe>
               ) : (
-                <WelcomeScreen onLoadSample={loadSample} />
-              )
-            )}
-          </div>
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center p-8">
+                    <h2 className="text-xl font-semibold mb-4">HTMLプレビューモード</h2>
+                    <p className="text-gray-600 mb-6">HTMLコードを入力するか、サンプルを読み込んでください。</p>
+                    <button
+                      className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                      onClick={loadSample}
+                    >
+                      サンプルHTMLを読み込む
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            // Reactモードのプレビュー
+            <div
+              ref={previewRef}
+              className="flex-1 flex items-start justify-center p-8 pt-12 overflow-auto bg-gray-50"
+              style={{ height: 'calc(80vh - 100px)' }}
+            >
+              {error ? (
+                <div className="bg-red-50 p-6 rounded-lg w-full max-w-2xl">
+                  <div className="text-red-500 whitespace-pre-wrap mb-4">
+                    {error}
+                  </div>
+                  {component && React.createElement(component)}
+                </div>
+              ) : (
+                component ? (
+                  <React.Suspense fallback={<div>Loading...</div>}>
+                    <div
+                      ref={componentRef}
+                      className="w-full h-auto items-center justify-center"
+                      style={{ minHeight: 'auto' }}
+                    >
+                      {React.createElement(component)}
+                    </div>
+                  </React.Suspense>
+                ) : (
+                  <WelcomeScreen onLoadSample={loadSample} />
+                )
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
