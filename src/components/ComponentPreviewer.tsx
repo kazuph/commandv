@@ -26,6 +26,18 @@ import _ from 'lodash';
 import Papa from 'papaparse';
 // 必要なアイコンのみをインポート
 import { FaGithub } from 'react-icons/fa';
+import * as lucideReact from 'lucide-react';
+
+// よく使うコンポーネントを直接 scope に追加するために分割代入
+const {
+  ResponsiveContainer, LineChart, BarChart, PieChart, AreaChart, ScatterChart, ComposedChart, RadarChart, Treemap, RadialBarChart, Bar, // Bar を追加
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell, Label, LabelList, ReferenceLine, ReferenceDot, ReferenceArea, Brush, Customized, Funnel, FunnelChart, Sector, Text, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadialBar
+} = recharts;
+
+// よく使う Lucide アイコンを直接 scope に追加 (名前衝突を回避)
+const {
+  Activity, Airplay, AlertCircle, AlertOctagon, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Anchor, Aperture, Archive, ArrowDownCircle, ArrowDownLeft, ArrowDownRight, ArrowDown, ArrowLeftCircle, ArrowLeft, ArrowRightCircle, ArrowRight, ArrowUpCircle, ArrowUpLeft, ArrowUpRight, ArrowUp, AtSign, Award, BarChart2, BarChart: LucideBarChart, BatteryCharging, Battery, BellOff, BellRing, Bell, Bluetooth, Bold, BookOpen, Book, Bookmark, Box, Briefcase, Calendar, CameraOff, Camera, Cast, CheckCircle, CheckSquare, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsDown, ChevronsLeft, ChevronsRight, ChevronsUp, Chrome, Circle, Clipboard, Clock, CloudDrizzle, CloudLightning, CloudOff, CloudRain, CloudSnow, Cloud, Code, Codepen, Codesandbox, Coffee, Columns, Command, Compass, Copy, CornerDownLeft, CornerDownRight, CornerLeftDown, CornerLeftUp, CornerRightDown, CornerRightUp, CornerUpLeft, CornerUpRight, Cpu, CreditCard, Crop, Crosshair, Database, Delete, Disc, DivideCircle, DivideSquare, Divide, DollarSign, DownloadCloud, Download, Dribbble, Droplet, Edit2, Edit3, Edit, ExternalLink, EyeOff, Eye, Facebook, FastForward, Feather, Figma, FileMinus, FilePlus, FileText, File, Film, Filter, Flag, FolderMinus, FolderPlus, Folder, Framer, Frown, Gift, GitBranch, GitCommit, GitMerge, GitPullRequest, Github, Gitlab, Globe, Grid, HardDrive, Hash, Headphones, Heart, HelpCircle, Hexagon, Home, Image, Inbox, Info, Instagram, Italic, Key, Layers, Layout, LifeBuoy, Link2, Link, Linkedin, List, Loader, Lock, LogIn, LogOut, Mail, MapPin, Map, Maximize2, Maximize, Meh, Menu, MessageCircle, MessageSquare, MicOff, Mic, Minimize2, Minimize, MinusCircle, MinusSquare, Minus, Monitor, Moon, MoreHorizontal, MoreVertical, MousePointer, Move, Music, Navigation2, Navigation, Octagon, Package, Paperclip, PauseCircle, Pause, PenTool, Percent, PhoneCall, PhoneForwarded, PhoneIncoming, PhoneMissed, PhoneOff, PhoneOutgoing, Phone, PieChart: LucidePieChart, PlayCircle, Play, PlusCircle, PlusSquare, Plus, Pocket, Power, Printer, Radio, RefreshCcw, RefreshCw, Repeat, Rewind, RotateCcw, RotateCw, Rss, Save, Scissors, Search, Send, Server, Settings, Share2, Share, ShieldOff, Shield, ShoppingBag, ShoppingCart, Shuffle, Sidebar, SkipBack, SkipForward, Slack, Slash, Sliders, Smartphone, Smile, Speaker, Square, Star, StopCircle, Sun, Sunrise, Sunset, Tablet, Tag, Target, Terminal, Thermometer, ThumbsDown, ThumbsUp, ToggleLeft, ToggleRight, Tool, Trash2, Trash, Trello, TrendingDown, TrendingUp, Triangle, Truck, Tv, Twitch, Twitter, Type, Umbrella, Underline, Unlock, UploadCloud, Upload, UserCheck, UserMinus, UserPlus, UserX, User, Users, VideoOff, Video, Voicemail, Volume1, Volume2, VolumeX, Volume, Watch, WifiOff, Wifi, Wind, XCircle, XOctagon, XSquare, X, Youtube, ZapOff, Zap, ZoomIn, ZoomOut
+} = lucideReact;
 
 import AppleLogo from './AppleLogo';
 import WelcomeScreen from './WelcomeScreen';
@@ -72,7 +84,7 @@ const downloadElementAsImage = (element: HTMLElement, fileName: string, format: 
         backgroundColor: '#FFFFFF',
         pixelRatio: 2, // Higher resolution
         quality: 1.0,
-        skipFonts: false, // Include fonts for better text rendering
+        skipFonts: true, // Skip external fonts to avoid CORS issues
         canvasWidth: rect.width * 2,
         canvasHeight: rect.height * 2,
         style: {
@@ -146,14 +158,20 @@ const compileJSX = async (code: string): Promise<React.ComponentType> => {
       useMemo: React.useMemo,
       useContext: React.useContext,
       useReducer: React.useReducer,
-      // Libraries
+      // Libraries (全体もアクセス可能にする)
       recharts,
+      lucideReact,
       _,
       Papa,
       // D3.js
       d3: window.d3,
       // React Icons（必要なものだけを追加）
       FaGithub,
+      // Direct components from recharts (よく使うものを直接アクセス可能に)
+      ResponsiveContainer, LineChart, BarChart, PieChart, AreaChart, ScatterChart, ComposedChart, RadarChart, Treemap, RadialBarChart, Bar, // Bar を追加
+      XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell, Label, LabelList, ReferenceLine, ReferenceDot, ReferenceArea, Brush, Customized, Funnel, FunnelChart, Sector, Text, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadialBar,
+      // Direct icons from lucide-react (よく使うものを直接アクセス可能に、名前衝突回避)
+      Activity, Airplay, AlertCircle, AlertOctagon, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Anchor, Aperture, Archive, ArrowDownCircle, ArrowDownLeft, ArrowDownRight, ArrowDown, ArrowLeftCircle, ArrowLeft, ArrowRightCircle, ArrowRight, ArrowUpCircle, ArrowUpLeft, ArrowUpRight, ArrowUp, AtSign, Award, BarChart2, LucideBarChart, BatteryCharging, Battery, BellOff, BellRing, Bell, Bluetooth, Bold, BookOpen, Book, Bookmark, Box, Briefcase, Calendar, CameraOff, Camera, Cast, CheckCircle, CheckSquare, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsDown, ChevronsLeft, ChevronsRight, ChevronsUp, Chrome, Circle, Clipboard, Clock, CloudDrizzle, CloudLightning, CloudOff, CloudRain, CloudSnow, Cloud, Code, Codepen, Codesandbox, Coffee, Columns, Command, Compass, Copy, CornerDownLeft, CornerDownRight, CornerLeftDown, CornerLeftUp, CornerRightDown, CornerRightUp, CornerUpLeft, CornerUpRight, Cpu, CreditCard, Crop, Crosshair, Database, Delete, Disc, DivideCircle, DivideSquare, Divide, DollarSign, DownloadCloud, Download, Dribbble, Droplet, Edit2, Edit3, Edit, ExternalLink, EyeOff, Eye, Facebook, FastForward, Feather, Figma, FileMinus, FilePlus, FileText, File, Film, Filter, Flag, FolderMinus, FolderPlus, Folder, Framer, Frown, Gift, GitBranch, GitCommit, GitMerge, GitPullRequest, Github, Gitlab, Globe, Grid, HardDrive, Hash, Headphones, Heart, HelpCircle, Hexagon, Home, Image, Inbox, Info, Instagram, Italic, Key, Layers, Layout, LifeBuoy, Link2, Link, Linkedin, List, Loader, Lock, LogIn, LogOut, Mail, MapPin, Map, Maximize2, Maximize, Meh, Menu, MessageCircle, MessageSquare, MicOff, Mic, Minimize2, Minimize, MinusCircle, MinusSquare, Minus, Monitor, Moon, MoreHorizontal, MoreVertical, MousePointer, Move, Music, Navigation2, Navigation, Octagon, Package, Paperclip, PauseCircle, Pause, PenTool, Percent, PhoneCall, PhoneForwarded, PhoneIncoming, PhoneMissed, PhoneOff, PhoneOutgoing, Phone, LucidePieChart, PlayCircle, Play, PlusCircle, PlusSquare, Plus, Pocket, Power, Printer, Radio, RefreshCcw, RefreshCw, Repeat, Rewind, RotateCcw, RotateCw, Rss, Save, Scissors, Search, Send, Server, Settings, Share2, Share, ShieldOff, Shield, ShoppingBag, ShoppingCart, Shuffle, Sidebar, SkipBack, SkipForward, Slack, Slash, Sliders, Smartphone, Smile, Speaker, Square, Star, StopCircle, Sun, Sunrise, Sunset, Tablet, Tag, Target, Terminal, Thermometer, ThumbsDown, ThumbsUp, ToggleLeft, ToggleRight, Tool, Trash2, Trash, Trello, TrendingDown, TrendingUp, Triangle, Truck, Tv, Twitch, Twitter, Type, Umbrella, Underline, Unlock, UploadCloud, Upload, UserCheck, UserMinus, UserPlus, UserX, User, Users, VideoOff, Video, Voicemail, Volume1, Volume2, VolumeX, Volume, Watch, WifiOff, Wifi, Wind, XCircle, XOctagon, XSquare, X, Youtube, ZapOff, Zap, ZoomIn, ZoomOut,
     };
 
     // Strip import/export statements (more carefully)
@@ -570,7 +588,7 @@ export default CounterApp;`;
             height: contentHeight,
             pixelRatio: 2,
             quality: 1.0,
-            skipFonts: false,
+            skipFonts: true, // Skip external fonts to avoid CORS issues
             backgroundColor: 'white'
           });
           
@@ -611,7 +629,7 @@ export default CounterApp;`;
         backgroundColor: 'white',
         pixelRatio: 2, // Higher resolution
         quality: 1.0,
-        skipFonts: false, // Include fonts for better text rendering
+        skipFonts: true, // Skip external fonts to avoid CORS issues
         style: {
           transform: 'scale(1)',
           transformOrigin: 'top left'
