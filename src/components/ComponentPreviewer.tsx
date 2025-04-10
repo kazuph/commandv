@@ -31,7 +31,7 @@ import * as lucideReact from 'lucide-react';
 // よく使うコンポーネントを直接 scope に追加するために分割代入
 const {
   ResponsiveContainer, LineChart, BarChart, PieChart, AreaChart, ScatterChart, ComposedChart, RadarChart, Treemap, RadialBarChart, Bar, // Bar を追加
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell, Label, LabelList, ReferenceLine, ReferenceDot, ReferenceArea, Brush, Customized, Funnel, FunnelChart, Sector, Text, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadialBar
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell, Label, LabelList, ReferenceLine, ReferenceDot, ReferenceArea, Brush, Customized, Funnel, FunnelChart, Sector, Text, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadialBar,
 } = recharts;
 
 // よく使う Lucide アイコンを直接 scope に追加 (名前衝突を回避)
@@ -41,8 +41,8 @@ const {
 // This diff doesn't actually need to change the destructuring list as all requested icons were already present.
 // Re-applying the same list for clarity and ensuring nothing was missed.
 const {
-  Activity, Airplay, AlertCircle, AlertOctagon, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Anchor, Aperture, Archive, ArrowDownCircle, ArrowDownLeft, ArrowDownRight, ArrowDown, ArrowLeftCircle, ArrowLeft, ArrowRightCircle, ArrowRight, ArrowUpCircle, ArrowUpLeft, ArrowUpRight, ArrowUp, AtSign, Award, BarChart2, BarChart: LucideBarChart, BatteryCharging, Battery, BellOff, BellRing, Bell, Bluetooth, Bold, BookOpen, Book, Bookmark, Box, Briefcase, Calendar, CameraOff, Camera, Cast, CheckCircle, CheckSquare, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsDown, ChevronsLeft, ChevronsRight, ChevronsUp, Chrome, Circle, Clipboard, Clock, CloudDrizzle, CloudLightning, CloudOff, CloudRain, CloudSnow, Cloud, Code, Codepen, Codesandbox, Coffee, Columns, Command, Compass, Copy, CornerDownLeft, CornerDownRight, CornerLeftDown, CornerLeftUp, CornerRightDown, CornerRightUp, CornerUpLeft, CornerUpRight, Cpu, CreditCard, Crop, Crosshair, Database, Delete, Disc, DivideCircle, DivideSquare, Divide, DollarSign, DownloadCloud, Download, Dribbble, Droplet, Edit2, Edit3, Edit, ExternalLink, EyeOff, Eye, Facebook, FastForward, Feather, Figma, FileMinus, FilePlus, FileText, File, Film, Filter, Flag, FolderMinus, FolderPlus, Folder, Framer, Frown, Gift, GitBranch, GitCommit, GitMerge, GitPullRequest, Github, Gitlab, Globe, Grid, HardDrive, Hash, Headphones, Heart, HelpCircle, Hexagon, Home, Image, Inbox, Info, Instagram, Italic, Key, Layers, Layout, LifeBuoy, Link2, Link, Linkedin, List, Loader, Lock, LogIn, LogOut, Mail, MapPin, Map, Maximize2, Maximize, Meh, Menu, MessageCircle, MessageSquare, MicOff, Mic, Minimize2, Minimize, MinusCircle, MinusSquare, Minus, Monitor, Moon, MoreHorizontal, MoreVertical, MousePointer, Move, Music, Mountain,
-  Navigation2, Navigation, Octagon, Package, Paperclip, PauseCircle, Pause, PenTool, Percent, PhoneCall, PhoneForwarded, PhoneIncoming, PhoneMissed, PhoneOff, PhoneOutgoing, Phone, PieChart: LucidePieChart, PlayCircle, Play, PlusCircle, PlusSquare, Plus, Pocket, Power, Printer, Radio, RefreshCcw, RefreshCw, Repeat, Rewind, RotateCcw, RotateCw, Rss, Save, Scissors, Search, Send, Server, Settings, Share2, Share, ShieldOff, Shield, ShoppingBag, ShoppingCart, Shuffle, Sidebar, SkipBack, SkipForward, Slack, Slash, Sliders, Smartphone, Smile, Speaker, Square, Star, StopCircle, Sun, Sunrise, Sunset, Tablet, Tag, Target, Terminal, Thermometer, ThumbsDown, ThumbsUp, ToggleLeft, ToggleRight, Tool, Trash2, Trash, Trello, TrendingDown, TrendingUp, Triangle, Truck, Tv, Twitch, Twitter, Type, Umbrella, Underline, Unlock, UploadCloud, Upload, UserCheck, UserMinus, UserPlus, UserX, User, Users, VideoOff, Video, Voicemail, Volume1, Volume2, VolumeX, Volume, Watch, WifiOff, Wifi, Wind, Wine,
+  Activity, Airplay, AlertCircle, AlertOctagon, AlertTriangle, AlignCenter, AlignJustify, AlignLeft, AlignRight, Anchor, Aperture, Archive, ArrowDownCircle, ArrowDownLeft, ArrowDownRight, ArrowDown, ArrowLeftCircle, ArrowLeft, ArrowRightCircle, ArrowRight, ArrowUpCircle, ArrowUpLeft, ArrowUpRight, ArrowUp, AtSign, Award, BarChart2, LucideBarChart, BatteryCharging, Battery, BellOff, BellRing, Bell, Bluetooth, Bold, BookOpen, Book, Bookmark, Box, Briefcase, Calendar, CameraOff, Camera, Cast, CheckCircle, CheckSquare, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ChevronsDown, ChevronsLeft, ChevronsRight, ChevronsUp, Chrome, Circle, Clipboard, Clock, CloudDrizzle, CloudLightning, CloudOff, CloudRain, CloudSnow, Cloud, Code, Codepen, Codesandbox, Coffee, Columns, Command, Compass, Copy, CornerDownLeft, CornerDownRight, CornerLeftDown, CornerLeftUp, CornerRightDown, CornerRightUp, CornerUpLeft, CornerUpRight, Cpu, CreditCard, Crop, Crosshair, Database, Delete, Disc, DivideCircle, DivideSquare, Divide, DollarSign, DownloadCloud, Download, Dribbble, Droplet, Edit2, Edit3, Edit, ExternalLink, EyeOff, Eye, Facebook, FastForward, Feather, Figma, FileMinus, FilePlus, FileText, File, Film, Filter, Flag, FolderMinus, FolderPlus, Folder, Framer, Frown, Gift, GitBranch, GitCommit, GitMerge, GitPullRequest, Github, Gitlab, Globe, Grid, HardDrive, Hash, Headphones, Heart, HelpCircle, Hexagon, Home, Image, Inbox, Info, Instagram, Italic, Key, Layers, Layout, LifeBuoy, Link2, Link, Linkedin, List, Loader, Lock, LogIn, LogOut, Mail, MapPin, Map, Maximize2, Maximize, Meh, Menu, MessageCircle, MessageSquare, MicOff, Mic, Minimize2, Minimize, MinusCircle, MinusSquare, Minus, Monitor, Moon, MoreHorizontal, MoreVertical, MousePointer, Move, Music, Mountain,
+  Navigation2, Navigation, Octagon, Package, Paperclip, PauseCircle, Pause, PenTool, Percent, PhoneCall, PhoneForwarded, PhoneIncoming, PhoneMissed, PhoneOff, PhoneOutgoing, Phone, LucidePieChart, PlayCircle, Play, PlusCircle, PlusSquare, Plus, Pocket, Power, Printer, Radio, RefreshCcw, RefreshCw, Repeat, Rewind, RotateCcw, RotateCw, Rss, Save, Scissors, Search, Send, Server, Settings, Share2, Share, ShieldOff, Shield, ShoppingBag, ShoppingCart, Shuffle, Sidebar, SkipBack, SkipForward, Slack, Slash, Sliders, Smartphone, Smile, Speaker, Square, Star, StopCircle, Sun, Sunrise, Sunset, Tablet, Tag, Target, Terminal, Thermometer, ThumbsDown, ThumbsUp, ToggleLeft, ToggleRight, Tool, Trash2, Trash, Trello, TrendingDown, TrendingUp, Triangle, Truck, Tv, Twitch, Twitter, Type, Umbrella, Underline, Unlock, UploadCloud, Upload, UserCheck, UserMinus, UserPlus, UserX, User, Users, VideoOff, Video, Voicemail, Volume1, Volume2, VolumeX, Volume, Watch, WifiOff, Wifi, Wind, Wine,
   Workflow, XCircle, XOctagon, XSquare, X, Youtube, Zap,
   ZoomIn, ZoomOut
 } = lucideReact;
@@ -60,6 +60,13 @@ const svgToDataURL = (svgElement: SVGElement): string => {
 
 // Function to download element as image
 const downloadElementAsImage = (element: HTMLElement, fileName: string, format: 'png' | 'svg' = 'png') => {
+  console.log('Entering downloadElementAsImage. Element:', element, 'FileName:', fileName, 'Format:', format); // ★デバッグログ追加
+
+  if (!element) {
+    console.error('downloadElementAsImage called with invalid element:', element);
+    return;
+  }
+  
   if (format === 'svg') {
     if (element.querySelector('svg')) {
       const svg = element.querySelector('svg') as SVGElement;
@@ -78,18 +85,15 @@ const downloadElementAsImage = (element: HTMLElement, fileName: string, format: 
   // For PNG, use html-to-image which has better gradient support
   const captureElement = async () => {
     try {
-      // Apply temporary background style if needed
-      const originalBackgroundColor = element.style.backgroundColor;
-      if (!originalBackgroundColor || originalBackgroundColor === 'transparent') {
-        element.style.backgroundColor = '#FFFFFF';
-      }
-      
+      // 元の背景色を保存（現在は背景色変更がコメントアウトされているため、こちらもコメントアウト）
+      // const originalBackgroundColor = element.style.backgroundColor;
       // Set dimensions
       const rect = element.getBoundingClientRect();
+      console.log('Element dimensions:', rect);
       
       // Use html-to-image for better gradient support
       const dataUrl = await htmlToImage.toPng(element, {
-        backgroundColor: '#FFFFFF',
+        // backgroundColor: '#FFFFFF',
         pixelRatio: 2, // Higher resolution
         quality: 1.0,
         skipFonts: true, // Skip external fonts to avoid CORS issues
@@ -107,12 +111,14 @@ const downloadElementAsImage = (element: HTMLElement, fileName: string, format: 
       link.download = `${fileName}.png`;
       link.click();
       
-      // Restore original background
-      element.style.backgroundColor = originalBackgroundColor;
-    } catch (err) {
-      console.error('Failed to capture element:', err);
-    }
-  };
+      // 背景色を元に戻す（現在は背景色変更がコメントアウトされているため、こちらもコメントアウト）
+      // element.style.backgroundColor = originalBackgroundColor;
+     } catch (err) {
+       console.error('Failed to capture element:', err);
+       // エラー時も背景色を元に戻す（現在は背景色変更がコメントアウトされているため、こちらもコメントアウト）
+       // try { element.style.backgroundColor = originalBackgroundColor; } catch {} // originalBackgroundColorが未定義の場合のエラーを防ぐ
+     }
+   };
   
   captureElement();
 };
@@ -562,53 +568,83 @@ export default CounterApp;`;
 
   // Download preview as image with improved styling
   const handleDownloadPreview = () => {
+    console.log('handleDownloadPreview called. Mode:', mode); // ★デバッグログ追加
+
     // HTMLモードの場合
     if (mode === 'html' && htmlPreviewRef.current) {
+      console.log('Handling HTML mode. iframe ref:', htmlPreviewRef.current); // ★デバッグログ追加
       try {
         const iframe = htmlPreviewRef.current;
         
         // iframeのコンテンツをキャプチャするためのCanvasを作成
         const captureIframe = async () => {
-          // iframeのサイズを取得
-          const width = iframe.offsetWidth;
-          const height = iframe.offsetHeight;
-          
-          // 画像としてキャプチャするためのCanvasを作成
-          const canvas = document.createElement('canvas');
-          canvas.width = width * 2; // 高解像度対応
-          canvas.height = height * 2;
-          
-          // iframeのコンテンツを新しいウィンドウにクローンして処理
+          console.log('Entering captureIframe'); // ★デバッグログ追加
           const iframeDoc = iframe.contentDocument;
           if (!iframeDoc) {
-            console.error('iframe document not available');
+            console.error('Could not get iframe document.');
             return;
           }
-          
-          // HTMLの実際のコンテンツサイズを取得
-          const htmlBody = iframeDoc.body;
-          const contentWidth = htmlBody.scrollWidth;
-          const contentHeight = htmlBody.scrollHeight;
-          
-          // HTML内の最初の要素を取得（通常はbodyの最初の子要素）
-          // これは余白なしでコンテンツのみをキャプチャするため
-          const mainContent = htmlBody.firstElementChild || htmlBody;
-          
-          // html-to-imageでコンテンツのみをキャプチャ
-          const dataUrl = await htmlToImage.toPng(mainContent as HTMLElement, {
-            width: contentWidth,
-            height: contentHeight,
-            pixelRatio: 2,
-            quality: 1.0,
-            skipFonts: true, // Skip external fonts to avoid CORS issues
-            backgroundColor: 'white'
-          });
-          
-          // 画像をダウンロード
-          const link = document.createElement('a');
-          link.download = 'commandv-html-preview.png';
-          link.href = dataUrl;
-          link.click();
+          const iframeWindow = iframe.contentWindow;
+          if (!iframeWindow) {
+            console.error('Could not get iframe window.');
+            return;
+          }
+          console.log('captureIframe: Got iframe doc and window'); // ★デバッグログ追加
+ 
+          // iframeのサイズを取得
+          const iframeWidth = iframe.offsetWidth;
+          const iframeHeight = iframe.offsetHeight;
+          console.log('captureIframe: iframe dimensions:', iframeWidth, iframeHeight); // ★デバッグログ追加
+ 
+          // bodyのサイズを取得
+          const body = iframeDoc.body;
+          const contentWidth = body.scrollWidth;
+          const contentHeight = body.scrollHeight;
+          console.log('captureIframe: content dimensions:', contentWidth, contentHeight); // ★デバッグログ追加
+ 
+          // Mermaidダイアグラムがある場合、レンダリングが完了するのを待つ
+          const mermaidElements = iframeDoc.body.querySelectorAll('.mermaid');
+          if (mermaidElements.length > 0) {
+            console.log('captureIframe: Waiting for Mermaid...'); // ★デバッグログ追加
+            // Mermaidのレンダリングが完了するのを待つ
+            await new Promise(resolve => setTimeout(resolve, 1000)); 
+            console.log('captureIframe: Finished waiting for Mermaid.'); // ★デバッグログ追加
+          }
+ 
+          // body全体をキャプチャ対象とする
+          const mainContent = body; // 常にbody全体を選択
+          console.log('captureIframe: Determined mainContent (entire body):', mainContent); // ★ログ更新
+ 
+          try { // ★エラーキャッチのためtry...catchを追加
+            console.log('captureIframe: Calling htmlToImage.toPng...'); // ★デバッグログ追加
+            const dataUrl = await htmlToImage.toPng(mainContent as HTMLElement, {
+              width: contentWidth,
+              height: contentHeight,
+              canvasWidth: contentWidth * 2, // Use content size for canvas
+              canvasHeight: contentHeight * 2,
+              pixelRatio: 2,
+              backgroundColor: 'white', // Ensure background for transparency issues
+              skipFonts: true, // Skip external fonts
+              style: {
+                // 元の要素のスタイルを維持しつつ、スケールを1に固定
+                transform: 'scale(1)', 
+                transformOrigin: 'top left',
+                width: `${contentWidth}px`,
+                height: `${contentHeight}px`,
+                margin: '0', // Remove potential margins
+                padding: '0', // Remove potential padding
+              }
+            });
+            console.log('captureIframe: htmlToImage.toPng finished.'); // ★デバッグログ追加
+ 
+            // Create download link
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = 'commandv-html-preview.png';
+            link.click();
+          } catch (err) { // ★エラーキャッチ
+            console.error('captureIframe: Error during htmlToImage.toPng or download:', err);
+          }
         };
         
         captureIframe();
@@ -620,41 +656,53 @@ export default CounterApp;`;
     
     // Reactモードの場合
     if (component && componentRef.current) {
-      // コンポーネント自体だけをキャプチャする
+      console.log('Handling React mode. Component exists:', !!component, 'Component ref:', componentRef.current); // ★デバッグログ追加
       const element = componentRef.current;
-      
-      // スタイル情報を取得
-      const styles = window.getComputedStyle(element);
       const originalElementStyle = element.getAttribute('style') || '';
-      
-      // コンポーネントはすでに自身のスタイルを持っているため、必要最小限の追加スタイルのみ適用
-      let additionalStyles = '';
-      if (!styles.backgroundColor || styles.backgroundColor === 'transparent') {
-        additionalStyles += 'background-color: white; ';
-      }
-      
-      // 一時的にスタイルを適用
-      element.setAttribute('style', originalElementStyle + additionalStyles);
-      
-      // コンポーネント自体だけをキャプチャ
-      htmlToImage.toPng(element, {
-        backgroundColor: 'white',
-        pixelRatio: 2, // Higher resolution
-        quality: 1.0,
-        skipFonts: true, // Skip external fonts to avoid CORS issues
-        style: {
-          transform: 'scale(1)',
-          transformOrigin: 'top left'
+ 
+       // キャプチャ関数を定義
+       const captureComponent = async () => {
+        console.log('captureComponent called. Element:', element); // ★デバッグログ追加
+        try {
+          // Mermaidダイアグラムがある場合、レンダリングが完了するのを待つ
+          const mermaidElements = element.querySelectorAll('.mermaid');
+          if (mermaidElements.length > 0) {
+            // Mermaidのレンダリングが完了するのを待つ
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          
+          // キャプチャ処理を実行
+          return await htmlToImage.toPng(element, {
+            backgroundColor: 'white',
+            pixelRatio: 2, // Higher resolution
+            quality: 1.0,
+            skipFonts: true, // Skip external fonts to avoid CORS issues
+            style: {
+              transform: 'scale(1)',
+              transformOrigin: 'top left'
+            }
+          });
+        } catch (err) {
+          console.error('Failed to capture element:', err);
         }
-      }).then((dataUrl: string) => {
-        // Create download link
-        const link = document.createElement('a');
-        link.download = 'commandv-component.png';
-        link.href = dataUrl;
-        link.click();
-        
-        // Restore original styling
-        element.setAttribute('style', originalElementStyle);
+      };
+      
+      // 非同期処理を実行
+      captureComponent().then((dataUrl: string | undefined) => {
+        // dataUrlが取得できた場合のみダウンロード処理を実行
+        if (dataUrl) {
+          // Create download link
+          const link = document.createElement('a');
+          link.download = `${component?.displayName || 'component'}.png`;
+          link.href = dataUrl;
+          link.click();
+          
+          // Restore original styling
+          element.setAttribute('style', originalElementStyle);         
+        } else {
+          // Restore original styling even if capture failed
+          element.setAttribute('style', originalElementStyle);
+        }
       }).catch((err: Error) => {
         console.error('Failed to capture element:', err);
         // Restore original styling on error too
