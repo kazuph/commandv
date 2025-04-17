@@ -475,8 +475,13 @@ export default CounterApp;`;
       if (!isEditorActive) {
         e.preventDefault();
         const pastedCode = e.clipboardData?.getData('text') || '';
-        setCode(pastedCode);
-        compileAndSetComponent(pastedCode);
+        let fixedCode = pastedCode;
+        const isMermaidSnippet = /<(?:div|pre)[^>]*class=["']mermaid["'][^>]*>/i.test(pastedCode);
+        if (detectCodeType(pastedCode) === 'html' || isMermaidSnippet) {
+          fixedCode = preprocessMermaidSyntax(pastedCode);
+        }
+        setCode(fixedCode);
+        compileAndSetComponent(fixedCode);
       }
     };
 
@@ -511,6 +516,33 @@ export default CounterApp;`;
     
     // より多くの特徴がある方を選択
     return htmlFeatureCount > reactFeatureCount ? 'html' : 'react';
+  };
+
+  // Mermaid記法のエラーになりやすい構文を事前補正する関数を追加
+  const preprocessMermaidSyntax = (html: string): string => {
+    return html.replace(
+      /(<(?:div|pre)[^>]*class=["']mermaid["'][^>]*>)([\s\S]*?)(<\/(?:div|pre)>)/g,
+      (_match: string, start: string, content: string, end: string) => {
+        // インラインの「%」コメントを削除
+        const withoutComments = content
+          .split('\n')
+          .map((line: string) => line.replace(/ *%.*$/, ''))
+          .join('\n');
+        // subgraph のタイトルが引用符で囲まれていない場合、ダブルクォートで囲む
+        const quotedSubgraphs = withoutComments.replace(/^(\s*subgraph\s+)(?!["'])(.*)$/gm, '$1"$2"');
+        // ノードやエッジの説明文内の半角記号を全角に変換（ラベル内のみ: [], {} 内）
+        let replaced = quotedSubgraphs;
+        // [], {}, (())内の半角記号を全角に変換
+        replaced = replaced.replace(/(\[[^\]]+\])|(\{[^\}]+\})|(\(\([^\)]+\)\))/g, (match: string) => {
+          const start = match.startsWith('[') ? '[' : match.startsWith('{') ? '{' : '((';
+          const end = match.endsWith(']') ? ']' : match.endsWith('}') ? '}' : '))';
+          const label = match.slice(start.length, -end.length);
+          return `${start}${label.replace(/\(/g,'（').replace(/\)/g,'）').replace(/:/g,'：').replace(/,/g,'，').replace(/;/g,'；')}${end}`;
+        }
+        );
+        return `${start}${replaced}${end}`;
+      }
+    );
   };
 
   // Compile code and set component
