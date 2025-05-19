@@ -655,7 +655,7 @@ export default CounterApp;`;
               canvasWidth: contentWidth * 2, // Use content size for canvas
               canvasHeight: contentHeight * 2,
               pixelRatio: 2,
-              backgroundColor: 'white', // Ensure background for transparency issues
+              backgroundColor: 'transparent', // 背景を透明に
               skipFonts: true, // Skip external fonts
               style: {
                 // 元の要素のスタイルを維持しつつ、スケールを1に固定
@@ -665,6 +665,7 @@ export default CounterApp;`;
                 height: `${contentHeight}px`,
                 margin: '0', // Remove potential margins
                 padding: '0', // Remove potential padding
+                backgroundColor: 'transparent' // スタイルでも背景を透明に
               }
             });
             console.log('captureIframe: htmlToImage.toPng finished.'); // ★デバッグログ追加
@@ -705,13 +706,14 @@ export default CounterApp;`;
           
           // キャプチャ処理を実行
           return await htmlToImage.toPng(element, {
-            backgroundColor: 'white',
+            backgroundColor: 'transparent',
             pixelRatio: 2, // Higher resolution
             quality: 1.0,
             skipFonts: true, // Skip external fonts to avoid CORS issues
             style: {
               transform: 'scale(1)',
-              transformOrigin: 'top left'
+              transformOrigin: 'top left',
+              backgroundColor: 'transparent' // スタイルでも背景を透明に
             }
           });
         } catch (err) {
