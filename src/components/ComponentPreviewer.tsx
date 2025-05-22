@@ -534,7 +534,13 @@ export default CounterApp;`;
           const start = match.startsWith('[') ? '[' : match.startsWith('{') ? '{' : '((';
           const end = match.endsWith(']') ? ']' : match.endsWith('}') ? '}' : '))';
           const label = match.slice(start.length, -end.length);
-          return `${start}${label.replace(/\(/g,'（').replace(/\)/g,'）').replace(/:/g,'：').replace(/,/g,'，').replace(/;/g,'；')}${end}`;
+          return `${start}${label
+            .replace(/"/g, "'") // ダブルクォートを &quot; にエスケープ
+            .replace(/\(/g,'（')
+            .replace(/\)/g,'）')
+            .replace(/:/g,'：')
+            .replace(/,/g,'，')
+            .replace(/;/g,'；')}${end}`;
         }
         );
         return `${start}${replaced}${end}`;
