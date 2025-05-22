@@ -523,11 +523,8 @@ export default CounterApp;`;
     return html.replace(
       /(<(?:div|pre)[^>]*class=["']mermaid["'][^>]*>)([\s\S]*?)(<\/(?:div|pre)>)/g,
       (_match: string, start: string, content: string, end: string) => {
-        // インラインの「%」コメントを削除
-        const withoutComments = content
-          .split('\n')
-          .map((line: string) => line.replace(/ *%.*$/, ''))
-          .join('\n');
+        // インラインの「%」コメントを削除する処理は、ユーザーの指示により無効化
+        const withoutComments = content; // contentをそのまま使う
         // subgraph のタイトルが引用符で囲まれていない場合、ダブルクォートで囲む
         const quotedSubgraphs = withoutComments.replace(/^(\s*subgraph\s+)(?!["'])(.*)$/gm, '$1"$2"');
         // ノードやエッジの説明文内の半角記号を全角に変換（ラベル内のみ: [], {} 内）
