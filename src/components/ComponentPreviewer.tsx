@@ -649,7 +649,23 @@ export default CounterApp;`;
           // body全体をキャプチャ対象とする
           const mainContent = body; // 常にbody全体を選択
           console.log('captureIframe: Determined mainContent (entire body):', mainContent); // ★ログ更新
- 
+
+          // === 背景色取得ロジック追加 ===
+          let computedBgColor = 'transparent';
+          try {
+            const computedStyle = iframeDoc.defaultView?.getComputedStyle(body);
+            if (computedStyle) {
+              const bg = computedStyle.getPropertyValue('background-color');
+              if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+                computedBgColor = bg;
+              }
+            }
+          } catch (e) {
+            console.warn('背景色の取得に失敗:', e);
+          }
+          console.log('captureIframe: computed background color:', computedBgColor);
+          // === ここまで ===
+
           try { // ★エラーキャッチのためtry...catchを追加
             console.log('captureIframe: Calling htmlToImage.toPng...'); // ★デバッグログ追加
             const dataUrl = await htmlToImage.toPng(mainContent as HTMLElement, {
@@ -658,7 +674,7 @@ export default CounterApp;`;
               canvasWidth: contentWidth * 2, // Use content size for canvas
               canvasHeight: contentHeight * 2,
               pixelRatio: 2,
-              backgroundColor: 'transparent', // 背景を透明に
+              backgroundColor: computedBgColor, // ← ここを修正
               skipFonts: true, // Skip external fonts
               style: {
                 // 元の要素のスタイルを維持しつつ、スケールを1に固定
@@ -668,7 +684,7 @@ export default CounterApp;`;
                 height: `${contentHeight}px`,
                 margin: '0', // Remove potential margins
                 padding: '0', // Remove potential padding
-                backgroundColor: 'transparent' // スタイルでも背景を透明に
+                backgroundColor: computedBgColor // ← ここも修正
               }
             });
             console.log('captureIframe: htmlToImage.toPng finished.'); // ★デバッグログ追加
