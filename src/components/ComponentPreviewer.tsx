@@ -355,6 +355,9 @@ const compileJSX = async (code: string): Promise<React.ComponentType> => {
   }
 };
 
+// デバイス判定ユーティリティ
+const isMobile = () => typeof window !== 'undefined' && (/iPhone|iPad|iPod|Android|Mobile|Windows Phone|webOS|BlackBerry|Opera Mini|IEMobile|WPDesktop/i.test(window.navigator.userAgent) || window.matchMedia('(max-width: 768px)').matches);
+
 const ComponentPreviewer: React.FC = () => {
   const [code, setCode] = useState<string>('');
   const [component, setComponent] = useState<React.ComponentType | null>(null);
@@ -366,6 +369,9 @@ const ComponentPreviewer: React.FC = () => {
   const previewRef = useRef<HTMLDivElement>(null);
   const componentRef = useRef<HTMLDivElement>(null); // コンポーネント自体を参照するためのref
   const htmlPreviewRef = useRef<HTMLIFrameElement>(null);
+  const [showHeader, setShowHeader] = useState<boolean>(true); // 帯の表示制御
+  const [isMobileDevice, setIsMobileDevice] = useState<boolean>(false);
+  const [canPaste, setCanPaste] = useState<boolean>(false); // モバイル用ペースト可否
 
   // Sample code for the counter app (Apple style)
   const sampleCode = `import { useState } from 'react';
@@ -764,37 +770,85 @@ export default CounterApp;`;
     }
   };
 
+  // デバイス判定（初回のみ）
+  useEffect(() => {
+    setIsMobileDevice(isMobile());
+    // モバイルでクリップボードAPIサポート確認
+    setCanPaste(!!(navigator.clipboard && (navigator.clipboard.readText || navigator.clipboard.read)));
+  }, []);
+
+  // ペースト時にヘッダーを非表示
+  useEffect(() => {
+    if (isMobileDevice) return;
+    
+    const hasContent = !!(component || code.trim());
+    if (hasContent) {
+      setShowHeader(false);
+    } else {
+      setShowHeader(true);
+    }
+  }, [component, code, isMobileDevice]);
+
+
+  // モバイル用ペーストボタン
+  const handleMobilePaste = async () => {
+    if (!navigator.clipboard) return;
+    try {
+      if (navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        setCode(text);
+        compileAndSetComponent(text);
+      } else if (navigator.clipboard.read) {
+        // 画像やリッチデータ対応（必要なら拡張）
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          for (const type of item.types) {
+            if (type === 'text/plain') {
+              const blob = await item.getType(type);
+              const text = await blob.text();
+              setCode(text);
+              compileAndSetComponent(text);
+              return;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      alert('ペーストに失敗しました');
+    }
+  };
+
   return (
     <div className="bg-white min-h-screen flex flex-col items-stretch" style={{ width: '100%', maxWidth: '100%', margin: 0, padding: 0 }}>
-      {/* Header */}
-      <header className="flex justify-between items-center px-6 py-3 border-b border-gray-200 sticky top-0 bg-white z-10">
-        <div className="flex items-center gap-2">
-          <AppleLogo />
-          <h1 className="text-2xl font-light">CommandV</h1>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          
-          <button
-            className="px-3 py-1 flex items-center justify-center rounded-md bg-gray-100 hover:bg-gray-200 transition-colors text-sm"
-            onClick={() => setShowCode(!showCode)}
-          >
-            {showCode ? "Hide Code" : "Show Code"}
-          </button>
-          
-          <button
-            className="px-4 py-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-md hover:opacity-90 transition-opacity text-sm"
-            onClick={handleDownloadPreview}
-          >
-            Save as Image
-          </button>
-        </div>
-      </header>
-      
+      {/* デスクトップ：帯（ヘッダー） */}
+      {!isMobileDevice && showHeader && (
+        <header
+          className="flex justify-between items-center px-6 py-3 border-b border-gray-200 sticky top-0 bg-white z-10"
+        >
+          <div className="flex items-center gap-2">
+            <AppleLogo />
+            <h1 className="text-2xl font-light">CommandV</h1>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              className="px-3 py-1 flex items-center justify-center rounded-md bg-gray-100 hover:bg-gray-200 transition-colors text-sm"
+              onClick={() => setShowCode(!showCode)}
+            >
+              {showCode ? "Hide Code" : "Show Code"}
+            </button>
+            <button
+              className="px-4 py-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-md hover:opacity-90 transition-opacity text-sm"
+              onClick={handleDownloadPreview}
+            >
+              Save as Image
+            </button>
+          </div>
+        </header>
+      )}
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden" style={{ width: '100%', maxWidth: '100%' }}>
         {/* Code editor */}
-        {showCode && (
+        {showCode && !isMobileDevice && (
           <div className="w-1/2 border-r border-gray-200 flex flex-col">
             <div className="flex-1 p-4 bg-gray-50" style={{ height: 'calc(80vh - 100px)' }}>
               {/* Monaco Editor */}
@@ -831,7 +885,48 @@ export default CounterApp;`;
         )}
         
         {/* Preview */}
-        <div className={`${showCode ? 'w-1/2' : 'w-full'} flex flex-col overflow-hidden`}>
+        <div className={`${showCode && !isMobileDevice ? 'w-1/2' : 'w-full'} flex flex-col overflow-hidden relative`}>
+          {/* モバイル：右上にダウンロード＆ペーストボタン */}
+          {isMobileDevice && (
+            <div className="absolute top-2 right-2 flex gap-2 z-20">
+              <button
+                className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full shadow hover:opacity-90"
+                onClick={handleDownloadPreview}
+                aria-label="画像保存"
+              >
+                {lucideReact.Download && <lucideReact.Download size={24} />}
+              </button>
+              {canPaste && (
+                <button
+                  className="p-2 bg-gray-200 text-gray-700 rounded-full shadow hover:bg-gray-300"
+                  onClick={handleMobilePaste}
+                  aria-label="ペースト"
+                >
+                  <span className="text-lg font-bold">⎘</span>
+                </button>
+              )}
+            </div>
+          )}
+          
+          {/* デスクトップ：コンテンツがある場合の右上フローティングアイコン */}
+          {!isMobileDevice && !showHeader && (component || code.trim()) && (
+            <div className="absolute top-4 right-4 flex gap-2 z-20">
+              <button
+                className="p-2 bg-white/70 backdrop-blur-sm text-gray-700 rounded-full shadow-lg hover:bg-white/90 transition-all duration-200"
+                onClick={() => setShowCode(!showCode)}
+                aria-label={showCode ? "Hide Code" : "Show Code"}
+              >
+                {lucideReact.Code && <lucideReact.Code size={20} />}
+              </button>
+              <button
+                className="p-2 bg-white/70 backdrop-blur-sm text-gray-700 rounded-full shadow-lg hover:bg-white/90 transition-all duration-200"
+                onClick={handleDownloadPreview}
+                aria-label="Save as Image"
+              >
+                {lucideReact.Download && <lucideReact.Download size={20} />}
+              </button>
+            </div>
+          )}
           {mode === 'html' ? (
             // HTMLモードのプレビュー
             <div className="flex-1 flex flex-col overflow-hidden bg-gray-50" style={{ height: 'calc(80vh - 100px)' }}>
