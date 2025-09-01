@@ -372,6 +372,47 @@ const ComponentPreviewer: React.FC = () => {
   const [showHeader, setShowHeader] = useState<boolean>(true); // 帯の表示制御
   const [isMobileDevice, setIsMobileDevice] = useState<boolean>(false);
   const [canPaste, setCanPaste] = useState<boolean>(false); // モバイル用ペースト可否
+  
+  // Save API 呼び出し
+  const handleSaveDiagram = async () => {
+    // タイトルは先頭行 or 日時
+    const now = new Date()
+    const defaultTitle = `Diagram ${now.toLocaleString()}`
+    const title = defaultTitle
+    let dataUrl: string | undefined
+    try {
+      // 既存の画像化処理を流用するため、プレビューDOMを検索
+      const node = (componentRef.current || previewRef.current) as HTMLElement | null
+      if (node) {
+        // 動的 import を既存関数から再利用できないため、ここで import
+        const htmlToImage = await import('html-to-image')
+        const dpr = Math.min(window.devicePixelRatio || 1, 2)
+        dataUrl = await htmlToImage.toPng(node, {
+          pixelRatio: dpr,
+          backgroundColor: '#ffffff'
+        })
+      }
+    } catch {}
+
+    const payload = {
+      title,
+      code,
+      mode: mode === 'react' ? 'jsx' : 'html',
+      isPrivate: false,
+      imageDataUrl: dataUrl
+    }
+    const res = await fetch('/api/diagrams', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    if (!res.ok) throw new Error('Save failed')
+    const json = await res.json()
+    // 保存後に個別ページへ遷移（OGP対応）
+    if (json.id) {
+      window.history.pushState({}, '', `/d/${json.id}`)
+    }
+  }
 
   // Sample code for the counter app (Apple style)
   const sampleCode = `import { useState } from 'react';
@@ -777,6 +818,24 @@ export default CounterApp;`;
     setCanPaste(!!(navigator.clipboard && (navigator.clipboard.readText || navigator.clipboard.read)));
   }, []);
 
+  // /d/:id でのロード
+  useEffect(() => {
+    const m = window.location.pathname.match(/^\/d\/([a-z0-9\-]+)$/i)
+    if (!m) return
+    const id = m[1]
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/diagrams/${id}`)
+        if (!res.ok) return
+        const row = await res.json()
+        const serverMode = (row.mode as string) === 'jsx' ? 'react' : 'html'
+        setMode(serverMode as 'react' | 'html')
+        setCode(row.code as string)
+        if (serverMode === 'react') await compileAndSetComponent(row.code as string)
+      } catch {}
+    })()
+  }, [])
+
   // ペースト時にヘッダーを非表示
   useEffect(() => {
     if (isMobileDevice) return;
@@ -842,6 +901,19 @@ export default CounterApp;`;
             >
               Save as Image
             </button>
+            <button
+              className="px-4 py-1.5 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-md hover:opacity-90 transition-opacity text-sm"
+              onClick={async () => {
+                try {
+                  // 画像生成（既存のプレビューDOMを利用）
+                  await handleSaveDiagram()
+                } catch (e) {
+                  alert('Save failed')
+                }
+              }}
+            >
+              Save
+            </button>
           </div>
         </header>
       )}
@@ -896,6 +968,13 @@ export default CounterApp;`;
               >
                 {lucideReact.Download && <lucideReact.Download size={24} />}
               </button>
+              <button
+                className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-full shadow hover:opacity-90"
+                onClick={async () => { try { await handleSaveDiagram() } catch {} }}
+                aria-label="保存"
+              >
+                {lucideReact.Save && <lucideReact.Save size={24} />}
+              </button>
               {canPaste && (
                 <button
                   className="p-2 bg-gray-200 text-gray-700 rounded-full shadow hover:bg-gray-300"
@@ -924,6 +1003,13 @@ export default CounterApp;`;
                 aria-label="Save as Image"
               >
                 {lucideReact.Download && <lucideReact.Download size={20} />}
+              </button>
+              <button
+                className="p-2 bg-white/70 backdrop-blur-sm text-gray-700 rounded-full shadow-lg hover:bg-white/90 transition-all duration-200"
+                onClick={async () => { try { await handleSaveDiagram() } catch {} }}
+                aria-label="Save"
+              >
+                {lucideReact.Save && <lucideReact.Save size={20} />}
               </button>
             </div>
           )}
