@@ -202,6 +202,22 @@ app.post('/api/diagrams', async (c) => {
   return c.json({ id, title, imageKey })
 })
 
+app.delete('/api/diagrams/:id', async (c) => {
+  const user = (c as any).var.user as SessionUser | null
+  if (!user) return c.text('Unauthorized', 401)
+  const id = c.req.param('id')
+  const row = await c.env.DB.prepare('SELECT user_id, image_key FROM diagrams WHERE id = ?').bind(id).first<any>()
+  if (!row) return c.text('Not found', 404)
+  if (row.user_id !== user.id) return c.text('Forbidden', 403)
+  // delete DB first
+  await c.env.DB.prepare('DELETE FROM diagrams WHERE id = ?').bind(id).run()
+  // best-effort delete from R2
+  if (row.image_key) {
+    try { await c.env.R2.delete(row.image_key as string) } catch {}
+  }
+  return c.json({ ok: true })
+})
+
 // OGP image serving: /og/:id -> fetch from R2 (DB lookup)
 app.get('/og/:id', async (c) => {
   const id = c.req.param('id')

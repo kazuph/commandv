@@ -486,6 +486,21 @@ const ComponentPreviewer: React.FC = () => {
     }
   }
 
+  const handleDeleteCurrent = async () => {
+    const m = window.location.pathname.match(/^\/d\/([a-z0-9\-]+)$/i)
+    if (!m) { showToast('error', '削除対象がありません'); return }
+    const id = m[1]
+    if (!confirm('この図解を削除しますか？')) return
+    const me = await ensureLogin();
+    if (!me) return
+    try {
+      const r = await fetch(`/api/diagrams/${id}`, { method: 'DELETE' })
+      if (!r.ok) { showToast('error', '削除に失敗しました'); return }
+      handleClear()
+      showToast('success', '削除しました')
+    } catch { showToast('error', '削除に失敗しました') }
+  }
+
   // Sample code for the counter app (Apple style)
   const sampleCode = `import { useState } from 'react';
 
@@ -1060,6 +1075,13 @@ export default CounterApp;`;
                 {lucideReact.Save && <lucideReact.Save size={24} />}
               </button>
               <button
+                className="p-2 bg-red-500 text-white rounded-full shadow hover:opacity-90"
+                onClick={handleDeleteCurrent}
+                aria-label="削除"
+              >
+                {lucideReact.Trash && <lucideReact.Trash size={22} />}
+              </button>
+              <button
                 className="p-2 bg-white/80 backdrop-blur text-gray-700 rounded-full shadow hover:bg-white"
                 onClick={handleClear}
                 aria-label="クリア"
@@ -1101,6 +1123,13 @@ export default CounterApp;`;
                 aria-label="Save"
               >
                 {lucideReact.Save && <lucideReact.Save size={20} />}
+              </button>
+              <button
+                className="p-2 bg-white/70 backdrop-blur-sm text-red-600 rounded-full shadow-lg hover:bg-white/90 transition-all duration-200"
+                onClick={handleDeleteCurrent}
+                aria-label="Delete"
+              >
+                {lucideReact.Trash && <lucideReact.Trash size={20} />}
               </button>
               <button
                 className="p-2 bg-white/70 backdrop-blur-sm text-gray-700 rounded-full shadow-lg hover:bg-white/90 transition-all duration-200"
