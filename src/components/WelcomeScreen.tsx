@@ -3,11 +3,12 @@ import AppleLogo from './AppleLogo';
 
 interface WelcomeScreenProps {
   onLoadSample: () => void;
+  belowCta?: React.ReactNode; // CTA直下に差し込む領域（最近の図解など）
 }
 
-const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLoadSample }) => {
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLoadSample, belowCta }) => {
   return (
-    <div className="flex flex-col items-center justify-center h-full w-full py-8">
+    <div className="flex flex-col items-center justify-center h-full w-full py-8 pb-24">
       <div className="mb-6">
         <AppleLogo />
       </div>
@@ -31,8 +32,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLoadSample }) => {
       >
         View Sample
       </button>
-      
-      <div className="absolute bottom-6 text-xs text-gray-400">
+      {belowCta && (
+        <div className="mt-6 w-full max-w-6xl px-4">
+          {belowCta}
+        </div>
+      )}
+      <div className="mt-8 text-xs text-gray-400">
         Paste your component code anywhere to preview
       </div>
     </div>

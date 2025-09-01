@@ -1186,13 +1186,7 @@ export default CounterApp;`;
                     </div>
                   </React.Suspense>
                 ) : (
-                  <div className="w-full">
-                    <WelcomeScreen onLoadSample={loadSample} />
-                    {/* サンプルボタンの直下に最近の図解を配置（フッターより上） */}
-                    <div className="mt-6">
-                      <RecentDiagramStrip />
-                    </div>
-                  </div>
+                  <WelcomeScreen onLoadSample={loadSample} belowCta={<RecentDiagramStrip />} />
                 )
               )}
             </div>
