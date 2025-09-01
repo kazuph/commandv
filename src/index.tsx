@@ -153,7 +153,13 @@ app.get('/auth/google/callback', async (c) => {
     id: sub, provider: 'google', email, name, picture
   })
 
-  return c.redirect('/')
+  // 302 経由で Set-Cookie が落ちるケースに対応し、200で自前リダイレクト
+  return c.html(
+    `<!doctype html><meta charset="utf-8" />
+     <title>Signed in</title>
+     <script>window.location.replace('/')<\/script>
+     <p>Signing you in...</p>`
+  )
 })
 
 app.post('/auth/logout', (c) => {
@@ -164,6 +170,14 @@ app.post('/auth/logout', (c) => {
 app.get('/auth/me', (c) => {
   const user = (c as any).var.user as SessionUser | null
   return c.json({ user })
+})
+
+// Debug helper: shows cookies seen by server
+app.get('/auth/debug', (c) => {
+  return c.json({
+    cookie: c.req.header('cookie') || null,
+    me: (c as any).var.user || null
+  })
 })
 
 // Diagrams API
