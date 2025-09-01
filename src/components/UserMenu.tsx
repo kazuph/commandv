@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { FcGoogle } from 'react-icons/fc'
 
 type User = {
   id: string
@@ -29,9 +30,12 @@ const UserMenu: React.FC<{ compact?: boolean }>= ({ compact = false }) => {
     return (
       <a
         href="/auth/google/login"
-        className="text-sm text-gray-700 hover:underline"
+        className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-gray-100"
+        aria-label="Sign in with Google"
+        title="Sign in with Google"
       >
-        Googleでログイン
+        <FcGoogle size={20} />
+        {/* <span className="sr-only">Googleでログイン</span> */}
       </a>
     )
   }
