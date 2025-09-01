@@ -154,14 +154,12 @@ app.get('/auth/me', (c) => {
 app.get('/api/diagrams', async (c) => {
   const user = (c as any).var.user as SessionUser | null
   const limit = parseInt(new URL(c.req.url).searchParams.get('limit') || '20')
+  if (!user) return c.json({ items: [] })
   const rows = await c.env.DB.prepare(
-    user
-      ? `SELECT id, title, is_private, image_key, created_at FROM diagrams
-         WHERE is_private = 0 OR user_id = ?
-         ORDER BY created_at DESC LIMIT ?`
-      : `SELECT id, title, is_private, image_key, created_at FROM diagrams
-         WHERE is_private = 0 ORDER BY created_at DESC LIMIT ?`
-  ).bind(...(user ? [user.id, limit] as const : [limit] as const)).all()
+    `SELECT id, title, is_private, image_key, created_at FROM diagrams
+     WHERE user_id = ?
+     ORDER BY created_at DESC LIMIT ?`
+  ).bind(user.id, limit).all()
   return c.json({ items: rows.results || [] })
 })
 
@@ -207,8 +205,13 @@ app.post('/api/diagrams', async (c) => {
 // OGP image serving: /og/:id -> fetch from R2 (DB lookup)
 app.get('/og/:id', async (c) => {
   const id = c.req.param('id')
-  const row = await c.env.DB.prepare('SELECT image_key FROM diagrams WHERE id = ?').bind(id).first<any>()
-  const key = row?.image_key || `diagrams/${id}.png`
+  const row = await c.env.DB.prepare('SELECT user_id, is_private, image_key FROM diagrams WHERE id = ?').bind(id).first<any>()
+  if (!row) return c.text('Not found', 404)
+  if (row.is_private) {
+    const user = (c as any).var.user as SessionUser | null
+    if (!user || user.id !== row.user_id) return c.text('Forbidden', 403)
+  }
+  const key = row.image_key || `diagrams/${id}.png`
   const obj = await c.env.R2.get(key)
   if (!obj) return c.text('Not found', 404)
   return new Response(obj.body, {

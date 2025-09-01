@@ -7,10 +7,15 @@ type DiagramItem = {
 
 const RecentDiagramStrip: React.FC = () => {
   const [items, setItems] = useState<DiagramItem[]>([])
+  const [me, setMe] = useState<any>(null)
 
   useEffect(() => {
     const load = async () => {
       try {
+        const meRes = await fetch('/auth/me')
+        const meJson = await meRes.json()
+        if (!meJson.user) { setMe(null); setItems([]); return }
+        setMe(meJson.user)
         const res = await fetch('/api/diagrams?limit=30')
         const json = await res.json()
         setItems((json.items || []).map((x: any) => ({ id: x.id, title: x.title })))
@@ -19,7 +24,7 @@ const RecentDiagramStrip: React.FC = () => {
     load()
   }, [])
 
-  if (!items.length) return null
+  if (!me || !items.length) return null
 
   return (
     <section className="w-full px-4 py-3 border-b border-gray-100 bg-white/70 backdrop-blur">
@@ -53,4 +58,3 @@ const RecentDiagramStrip: React.FC = () => {
 }
 
 export default RecentDiagramStrip
-
