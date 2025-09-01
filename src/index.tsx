@@ -116,6 +116,18 @@ app.get('/auth/google/login', (c) => {
   return c.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`)
 })
 
+// Diagnostics: see what login would use (masked)
+app.get('/auth/google/config', (c) => {
+  const cid = c.env.GOOGLE_CLIENT_ID || ''
+  const masked = cid ? `${cid.slice(0,8)}...${cid.slice(-10)}` : ''
+  const redirect = c.env.GOOGLE_REDIRECT_URI || new URL('/auth/google/callback', c.req.url).toString()
+  return c.json({
+    clientId: masked || null,
+    hasSecret: !!c.env.GOOGLE_CLIENT_SECRET,
+    redirectUri: redirect
+  })
+})
+
 app.get('/auth/google/callback', async (c) => {
   const url = new URL(c.req.url)
   const code = url.searchParams.get('code')
