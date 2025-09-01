@@ -1009,6 +1009,9 @@ export default CounterApp;`;
             >
               Save
             </button>
+            <div className="hidden sm:block">
+              <UserMenu />
+            </div>
           </div>
         </header>
       )}
@@ -1056,7 +1059,8 @@ export default CounterApp;`;
         <div className={`${showCode && !isMobileDevice ? 'w-1/2' : 'w-full'} flex flex-col overflow-hidden relative`}>
           {/* モバイル：右上にダウンロード＆ペーストボタン */}
           {isMobileDevice && (
-            <div className="absolute top-2 right-2 flex gap-2 z-20">
+            <div className="absolute top-2 right-2 flex gap-2 z-20 items-center">
+              <UserMenu compact />
               <button
                 className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full shadow hover:opacity-90"
                 onClick={handleDownloadPreview}
@@ -1099,7 +1103,10 @@ export default CounterApp;`;
           
           {/* デスクトップ：コンテンツがある場合の右上フローティングアイコン */}
           {!isMobileDevice && !showHeader && (component || code.trim()) && (
-            <div className="absolute top-4 right-4 flex gap-2 z-20">
+            <div className="absolute top-4 right-4 flex gap-2 z-20 items-center">
+              <div className="hidden md:block">
+                <UserMenu compact />
+              </div>
               <button
                 className="p-2 bg-white/70 backdrop-blur-sm text-gray-700 rounded-full shadow-lg hover:bg-white/90 transition-all duration-200"
                 onClick={() => setShowCode(!showCode)}
