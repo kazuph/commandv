@@ -51,6 +51,7 @@ import AppleLogo from './AppleLogo';
 import WelcomeScreen from './WelcomeScreen';
 import SampleCounter from './SampleCounter';
 import RecentDiagramStrip from './RecentDiagramStrip';
+import UserMenu from './UserMenu';
 
 // Function to convert SVG to data URL for download
 const svgToDataURL = (svgElement: SVGElement): string => {
