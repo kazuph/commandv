@@ -50,6 +50,7 @@ const {
 import AppleLogo from './AppleLogo';
 import WelcomeScreen from './WelcomeScreen';
 import SampleCounter from './SampleCounter';
+import RecentDiagramStrip from './RecentDiagramStrip';
 
 // Function to convert SVG to data URL for download
 const svgToDataURL = (svgElement: SVGElement): string => {
@@ -939,6 +940,8 @@ export default CounterApp;`;
     }
   };
 
+  const noContent = !component && !code.trim()
+
   return (
     <div className="bg-white min-h-screen flex flex-col items-stretch" style={{ width: '100%', maxWidth: '100%', margin: 0, padding: 0 }}>
       {/* Toast */}
@@ -984,6 +987,10 @@ export default CounterApp;`;
             </button>
           </div>
         </header>
+      )}
+      {/* トップ画面内：横スクロールの最近の図解（コンテンツ未表示時のみ） */}
+      {noContent && (
+        <RecentDiagramStrip />
       )}
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden" style={{ width: '100%', maxWidth: '100%' }}>
