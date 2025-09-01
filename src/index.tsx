@@ -39,7 +39,9 @@ async function hmacSign(secret: string, payload: string) {
 }
 
 async function setSession(c: any, secret: string, user: SessionUser) {
-  const payload = btoa(JSON.stringify(user))
+  // UTF-8 safe base64 for cookie payload
+  const utf8 = new TextEncoder().encode(JSON.stringify(user))
+  const payload = btoa(String.fromCharCode(...utf8))
   const sig = await hmacSign(secret, payload)
   const url = new URL(c.req.url)
   const isLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1'
@@ -61,7 +63,9 @@ async function getSession(c: any, secret: string): Promise<SessionUser | null> {
   const expect = await hmacSign(secret, payload)
   if (expect !== sig) return null
   try {
-    return JSON.parse(atob(payload)) as SessionUser
+    const bytes = Uint8Array.from(atob(payload), (c) => c.charCodeAt(0))
+    const json = new TextDecoder().decode(bytes)
+    return JSON.parse(json) as SessionUser
   } catch {
     return null
   }
@@ -74,7 +78,8 @@ function decodeJwtPayload(idToken: string): any {
   let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
   // pad to length multiple of 4
   if (b64.length % 4) b64 += '='.repeat(4 - (b64.length % 4))
-  const json = atob(b64)
+  const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+  const json = new TextDecoder().decode(bytes)
   return JSON.parse(json)
 }
 
@@ -185,7 +190,10 @@ app.get('/auth/debug', async (c) => {
     const expected = await hmacSign(secret, payload)
     info.expected = expected
     info.sigMatches = expected === sig
-    try { info.parsed = JSON.parse(atob(payload)) } catch {}
+    try {
+      const bytes = Uint8Array.from(atob(payload), (c) => c.charCodeAt(0))
+      info.parsed = JSON.parse(new TextDecoder().decode(bytes))
+    } catch {}
   }
   info.me = c.get('user') || null
   return c.json(info)
