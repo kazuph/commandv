@@ -179,7 +179,8 @@ app.post('/api/diagrams', async (c) => {
   const body = await c.req.json<{ title?: string; code: string; mode: 'html'|'jsx'; isPrivate?: boolean; imageDataUrl?: string }>()
   const id = crypto.randomUUID()
   const title = body.title || 'Untitled Diagram'
-  const isPrivate = !!body.isPrivate
+  // 未ログインの場合の private 要求は無視（公開として保存）
+  const isPrivate = user ? !!body.isPrivate : false
 
   // Save base first
   await c.env.DB.prepare(

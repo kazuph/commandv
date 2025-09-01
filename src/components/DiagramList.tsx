@@ -8,13 +8,22 @@ type DiagramItem = {
   created_at?: number
 }
 
+type Me = { user?: { id: string; name?: string; picture?: string } | null }
+
 const DiagramList: React.FC = () => {
   const [items, setItems] = useState<DiagramItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [me, setMe] = useState<Me['user'] | null>(null)
 
   useEffect(() => {
     const load = async () => {
       try {
+        // auth status
+        try {
+          const meRes = await fetch('/auth/me')
+          const meJson = await meRes.json()
+          setMe(meJson.user || null)
+        } catch {}
         const res = await fetch('/api/diagrams?limit=30')
         const json = await res.json()
         setItems(json.items || [])
@@ -30,9 +39,23 @@ const DiagramList: React.FC = () => {
 
   return (
     <section className="w-full max-w-6xl mx-auto px-4 pt-6 pb-2">
-      <div className="flex items-baseline justify-between mb-3">
+      <div className="flex items-center justify-between mb-3">
         <h2 className="text-lg font-medium text-gray-900">最近の図解</h2>
-        <a href="/" className="text-sm text-blue-600 hover:underline">更新</a>
+        <div className="flex items-center gap-3">
+          <a href="/" className="text-sm text-blue-600 hover:underline">更新</a>
+          {me ? (
+            <>
+              {me.picture ? (
+                <img src={me.picture} alt={me.name || 'user'} className="w-6 h-6 rounded-full"/>
+              ) : null}
+              <form method="post" action="/auth/logout">
+                <button className="text-sm text-gray-600 hover:underline" type="submit">ログアウト</button>
+              </form>
+            </>
+          ) : (
+            <a href="/auth/google/login" className="text-sm text-gray-600 hover:underline">Googleでログイン</a>
+          )}
+        </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         {items.map((it) => (
@@ -56,4 +79,3 @@ const DiagramList: React.FC = () => {
 }
 
 export default DiagramList
-

@@ -6,17 +6,17 @@ assets = { directory = "./dist/", not_found_handling = "none" }
 # Create with: wrangler d1 create commandv
 # Then update database_id below or via environment-specific sections.
 #
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "commandv"
-# database_id = "REPLACE_WITH_YOUR_DATABASE_ID"
+[[d1_databases]]
+binding = "DB"
+database_name = "commandv"
+database_id = "0a12ec04-fad1-44f1-9d30-2891b1dcf543"
 
 # R2 bucket binding for OGP thumbnails (fill with your bucket name)
 # Create with: wrangler r2 bucket create commandv-ogp
 #
-# [[r2_buckets]]
-# binding = "R2"
-# bucket_name = "commandv-ogp"
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "commandv-ogp"
 
 [vars]
 # Used by sample /api/clock and also for session signing when not provided.
