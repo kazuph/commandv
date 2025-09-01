@@ -1016,10 +1016,7 @@ export default CounterApp;`;
           </div>
         </header>
       )}
-      {/* トップ画面内：横スクロールの最近の図解（コンテンツ未表示時のみ） */}
-      {noContent && (
-        <RecentDiagramStrip />
-      )}
+      {/* 最近の図解ストリップはWelcomeScreen内に配置（ここでは表示しない） */}
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden" style={{ width: '100%', maxWidth: '100%' }}>
         {/* Code editor */}
@@ -1160,18 +1157,7 @@ export default CounterApp;`;
                   sandbox="allow-scripts allow-same-origin"
                 ></iframe>
               ) : (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center p-8">
-                    <h2 className="text-xl font-semibold mb-4">HTMLプレビューモード</h2>
-                    <p className="text-gray-600 mb-6">HTMLコードを入力するか、サンプルを読み込んでください。</p>
-                    <button
-                      className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-                      onClick={loadSample}
-                    >
-                      サンプルHTMLを読み込む
-                    </button>
-                  </div>
-                </div>
+                <div className="h-full" />
               )}
             </div>
           ) : (
@@ -1200,7 +1186,13 @@ export default CounterApp;`;
                     </div>
                   </React.Suspense>
                 ) : (
-                  <WelcomeScreen onLoadSample={loadSample} />
+                  <div className="w-full">
+                    <WelcomeScreen onLoadSample={loadSample} />
+                    {/* サンプルボタンの直下に最近の図解を配置（フッターより上） */}
+                    <div className="mt-6">
+                      <RecentDiagramStrip />
+                    </div>
+                  </div>
                 )
               )}
             </div>
