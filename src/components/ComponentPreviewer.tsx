@@ -401,6 +401,8 @@ const ComponentPreviewer: React.FC = () => {
     setCode('')
     setComponent(null)
     setError(null)
+    // 初期画面に戻すためにモードもReactに戻す
+    try { setMode('react') } catch {}
     // URLをトップに戻す
     try { window.history.replaceState({}, '', '/') } catch {}
     showToast('success', 'クリアしました')
