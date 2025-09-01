@@ -66,6 +66,17 @@ async function getSession(c: any, secret: string): Promise<SessionUser | null> {
   }
 }
 
+// Decode Base64URL JWT payload safely
+function decodeJwtPayload(idToken: string): any {
+  const parts = idToken.split('.')
+  if (parts.length < 2) throw new Error('Invalid JWT')
+  let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+  // pad to length multiple of 4
+  if (b64.length % 4) b64 += '='.repeat(4 - (b64.length % 4))
+  const json = atob(b64)
+  return JSON.parse(json)
+}
+
 const app = new Hono<Env>()
 
 // Attach user to context if logged in
@@ -121,7 +132,12 @@ app.get('/auth/google/callback', async (c) => {
   const tokenJson = await tokenRes.json<any>()
   const idToken = tokenJson.id_token as string | undefined
   if (!idToken) return c.text('Missing id_token', 500)
-  const payload = JSON.parse(atob(idToken.split('.')[1]))
+  let payload: any
+  try {
+    payload = decodeJwtPayload(idToken)
+  } catch (e) {
+    return c.text('Invalid id_token payload', 500)
+  }
   const sub = payload.sub as string
   const email = payload.email as string | undefined
   const name = payload.name as string | undefined
