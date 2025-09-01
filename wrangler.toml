@@ -19,10 +19,5 @@ binding = "R2"
 bucket_name = "commandv-ogp"
 
 [vars]
-# Used by sample /api/clock and also for session signing when not provided.
+# Used by sample /api/clock
 MY_VAR = "Hello from Cloudflare Workers!"
-SESSION_SECRET = "CHANGE_ME_TO_RANDOM_32B"
-GOOGLE_CLIENT_ID = ""
-GOOGLE_CLIENT_SECRET = ""
-# Optional: override callback
-GOOGLE_REDIRECT_URI = ""
