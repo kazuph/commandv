@@ -47,6 +47,9 @@ const {
   ZoomIn, ZoomOut
 } = lucideReact;
 
+// Mermaid用の自動補正は原則オフ（不要/有害な書き換えを避ける）
+const ENABLE_MERMAID_PREPROCESS = false;
+
 import AppleLogo from './AppleLogo';
 import WelcomeScreen from './WelcomeScreen';
 import SampleCounter from './SampleCounter';
@@ -375,6 +378,36 @@ const ComponentPreviewer: React.FC = () => {
   const [isMobileDevice, setIsMobileDevice] = useState<boolean>(false);
   const [canPaste, setCanPaste] = useState<boolean>(false); // モバイル用ペースト可否
   const [toast, setToast] = useState<{type: 'success'|'error'; message: string} | null>(null);
+
+  // HTMLプレビュー用のsrcDocを生成（Mermaid未読み込み時にUMD版を注入）
+  const iframeSrcDoc = React.useMemo(() => {
+    if (mode !== 'html') return '';
+    if (!code) return '';
+
+    const hasHtmlRoot = /<html[\s>]/i.test(code) || /<!DOCTYPE\s+html>/i.test(code);
+    const hasMermaidBlock = /class=["']mermaid["']/i.test(code);
+    const hasMermaidScript = /(cdn\.jsdelivr\.net\/npm\/mermaid|unpkg\.com\/mermaid|mermaid(?:\.min)?\.js|mermaid\.esm)/i.test(code);
+
+    // ベースHTMLの用意（<html>が無い場合のみラップ）
+    let html = hasHtmlRoot
+      ? code
+      : `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"/></head><body>${code}</body></html>`;
+
+    // Mermaidブロックがあるのにスクリプトが無ければUMD版を注入
+    if (hasMermaidBlock && !hasMermaidScript) {
+      const mermaidScriptTag = `<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>`;
+      const mermaidInitScript = `<script>try{window.mermaid&&window.mermaid.initialize({startOnLoad:true,securityLevel:'loose'});}catch(e){console.error('Mermaid init error:',e);}</script>`;
+
+      // </head> の直前にスクリプトを入れる（無ければ先頭に挿入）
+      if (/<\/head>/i.test(html)) {
+        html = html.replace(/<\/head>/i, `${mermaidScriptTag}\n${mermaidInitScript}</head>`);
+      } else {
+        html = html.replace(/<body[^>]*>/i, match => `${mermaidScriptTag}\n${mermaidInitScript}\n${match}`);
+      }
+    }
+
+    return html;
+  }, [mode, code]);
   
   // ユーザー確認
   const ensureLogin = async () => {
@@ -614,7 +647,7 @@ export default CounterApp;`;
         const pastedCode = e.clipboardData?.getData('text') || '';
         let fixedCode = pastedCode;
         const isMermaidSnippet = /<(?:div|pre)[^>]*class=["']mermaid["'][^>]*>/i.test(pastedCode);
-        if (detectCodeType(pastedCode) === 'html' || isMermaidSnippet) {
+        if ((detectCodeType(pastedCode) === 'html' || isMermaidSnippet) && ENABLE_MERMAID_PREPROCESS) {
           fixedCode = preprocessMermaidSyntax(pastedCode);
         }
         setCode(fixedCode);
@@ -1154,7 +1187,7 @@ export default CounterApp;`;
                 <iframe
                   ref={htmlPreviewRef}
                   className="w-full h-full border-none"
-                  srcDoc={code}
+                  srcDoc={iframeSrcDoc}
                   title="HTML Preview"
                   sandbox="allow-scripts allow-same-origin"
                 ></iframe>
