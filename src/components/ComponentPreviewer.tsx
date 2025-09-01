@@ -396,6 +396,15 @@ const ComponentPreviewer: React.FC = () => {
     setTimeout(() => setToast(null), 2200)
   }
 
+  const handleClear = () => {
+    setCode('')
+    setComponent(null)
+    setError(null)
+    // URLをトップに戻す
+    try { window.history.replaceState({}, '', '/') } catch {}
+    showToast('success', 'クリアしました')
+  }
+
   // 画像生成（モード別）
   const capturePreview = async (): Promise<string | undefined> => {
     try {
@@ -1050,6 +1059,13 @@ export default CounterApp;`;
               >
                 {lucideReact.Save && <lucideReact.Save size={24} />}
               </button>
+              <button
+                className="p-2 bg-white/80 backdrop-blur text-gray-700 rounded-full shadow hover:bg-white"
+                onClick={handleClear}
+                aria-label="クリア"
+              >
+                {lucideReact.X && <lucideReact.X size={22} />}
+              </button>
               {canPaste && (
                 <button
                   className="p-2 bg-gray-200 text-gray-700 rounded-full shadow hover:bg-gray-300"
@@ -1085,6 +1101,13 @@ export default CounterApp;`;
                 aria-label="Save"
               >
                 {lucideReact.Save && <lucideReact.Save size={20} />}
+              </button>
+              <button
+                className="p-2 bg-white/70 backdrop-blur-sm text-gray-700 rounded-full shadow-lg hover:bg-white/90 transition-all duration-200"
+                onClick={handleClear}
+                aria-label="Clear"
+              >
+                {lucideReact.X && <lucideReact.X size={20} />}
               </button>
             </div>
           )}
