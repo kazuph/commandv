@@ -1012,10 +1012,7 @@ export default CounterApp;`;
           </div>
         </header>
       )}
-      {/* トップ画面内：横スクロールの最近の図解（コンテンツ未表示時のみ） */}
-      {noContent && (
-        <RecentDiagramStrip />
-      )}
+      {/* 先頭ストリップはWelcomeScreen直下に移動 */}
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden" style={{ width: '100%', maxWidth: '100%' }}>
         {/* Code editor */}
@@ -1192,7 +1189,12 @@ export default CounterApp;`;
                     </div>
                   </React.Suspense>
                 ) : (
-                  <WelcomeScreen onLoadSample={loadSample} />
+                  <div className="w-full">
+                    <WelcomeScreen onLoadSample={loadSample} />
+                    <div className="mt-6">
+                      <RecentDiagramStrip />
+                    </div>
+                  </div>
                 )
               )}
             </div>
