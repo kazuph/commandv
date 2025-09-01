@@ -84,8 +84,7 @@ const app = new Hono<Env>()
 app.use('*', async (c, next) => {
   const secret = c.env.SESSION_SECRET || c.env.MY_VAR
   const user = await getSession(c, secret)
-  ;(c as any).var ||= {}
-  ;(c as any).var.user = user
+  c.set('user', user)
   return next()
 })
 
@@ -170,7 +169,7 @@ app.post('/auth/logout', (c) => {
 })
 
 app.get('/auth/me', (c) => {
-  const user = (c as any).var.user as SessionUser | null
+  const user = c.get('user')
   return c.json({ user })
 })
 
@@ -188,13 +187,13 @@ app.get('/auth/debug', async (c) => {
     info.sigMatches = expected === sig
     try { info.parsed = JSON.parse(atob(payload)) } catch {}
   }
-  info.me = (c as any).var.user || null
+  info.me = c.get('user') || null
   return c.json(info)
 })
 
 // Diagrams API
 app.get('/api/diagrams', async (c) => {
-  const user = (c as any).var.user as SessionUser | null
+  const user = c.get('user')
   const limit = parseInt(new URL(c.req.url).searchParams.get('limit') || '20')
   if (!user) return c.json({ items: [] })
   const rows = await c.env.DB.prepare(
@@ -207,7 +206,7 @@ app.get('/api/diagrams', async (c) => {
 
 app.get('/api/diagrams/:id', async (c) => {
   const id = c.req.param('id')
-  const user = (c as any).var.user as SessionUser | null
+  const user = c.get('user')
   const row = await c.env.DB.prepare(
     `SELECT * FROM diagrams WHERE id = ?`
   ).bind(id).first<any>()
@@ -217,7 +216,7 @@ app.get('/api/diagrams/:id', async (c) => {
 })
 
 app.post('/api/diagrams', async (c) => {
-  const user = (c as any).var.user as SessionUser | null
+  const user = c.get('user')
   if (!user) {
     return c.json({ ok: false, login: true, loginUrl: '/auth/google/login' }, 401)
   }
@@ -245,7 +244,7 @@ app.post('/api/diagrams', async (c) => {
 })
 
 app.delete('/api/diagrams/:id', async (c) => {
-  const user = (c as any).var.user as SessionUser | null
+  const user = c.get('user')
   if (!user) return c.text('Unauthorized', 401)
   const id = c.req.param('id')
   const row = await c.env.DB.prepare('SELECT user_id, image_key FROM diagrams WHERE id = ?').bind(id).first<any>()
@@ -266,7 +265,7 @@ app.get('/og/:id', async (c) => {
   const row = await c.env.DB.prepare('SELECT user_id, is_private, image_key FROM diagrams WHERE id = ?').bind(id).first<any>()
   if (!row) return c.text('Not found', 404)
   if (row.is_private) {
-    const user = (c as any).var.user as SessionUser | null
+    const user = c.get('user')
     if (!user || user.id !== row.user_id) return c.text('Forbidden', 403)
   }
   const key = row.image_key || `diagrams/${id}.png`
