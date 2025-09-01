@@ -372,33 +372,90 @@ const ComponentPreviewer: React.FC = () => {
   const [showHeader, setShowHeader] = useState<boolean>(true); // 帯の表示制御
   const [isMobileDevice, setIsMobileDevice] = useState<boolean>(false);
   const [canPaste, setCanPaste] = useState<boolean>(false); // モバイル用ペースト可否
+  const [toast, setToast] = useState<{type: 'success'|'error'; message: string} | null>(null);
   
+  // ユーザー確認
+  const ensureLogin = async () => {
+    try {
+      const r = await fetch('/auth/me')
+      const j = await r.json()
+      if (!j.user) {
+        window.location.href = '/auth/google/login'
+        return null
+      }
+      return j.user
+    } catch {
+      window.location.href = '/auth/google/login'
+      return null
+    }
+  }
+
+  const showToast = (type: 'success'|'error', message: string) => {
+    setToast({ type, message })
+    setTimeout(() => setToast(null), 2200)
+  }
+
+  // 画像生成（モード別）
+  const capturePreview = async (): Promise<string | undefined> => {
+    try {
+      if (mode === 'html' && htmlPreviewRef.current) {
+        const iframe = htmlPreviewRef.current;
+        const iframeDoc = iframe.contentDocument;
+        if (!iframeDoc) return undefined
+        const body = iframeDoc.body;
+        const contentWidth = body.scrollWidth;
+        const contentHeight = body.scrollHeight;
+        let computedBgColor = 'transparent';
+        try {
+          const computedStyle = iframeDoc.defaultView?.getComputedStyle(body);
+          const bg = computedStyle?.getPropertyValue('background-color');
+          if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') computedBgColor = bg;
+        } catch {}
+        const dataUrl = await htmlToImage.toPng(body as HTMLElement, {
+          width: contentWidth,
+          height: contentHeight,
+          canvasWidth: contentWidth * 2,
+          canvasHeight: contentHeight * 2,
+          pixelRatio: 2,
+          backgroundColor: computedBgColor,
+          style: {
+            transform: 'scale(1)',
+            transformOrigin: 'top left',
+            width: `${contentWidth}px`,
+            height: `${contentHeight}px`,
+            margin: '0',
+            padding: '0',
+            backgroundColor: computedBgColor,
+          }
+        })
+        return dataUrl
+      }
+      // Reactモード
+      const node = (componentRef.current || previewRef.current) as HTMLElement | null
+      if (!node) return undefined
+      const dpr = Math.min(window.devicePixelRatio || 1, 2)
+      const dataUrl = await htmlToImage.toPng(node, { pixelRatio: dpr, backgroundColor: '#ffffff' })
+      return dataUrl
+    } catch {
+      return undefined
+    }
+  }
+
   // Save API 呼び出し
   const handleSaveDiagram = async () => {
+    const me = await ensureLogin();
+    if (!me) return; // ensureLogin がリダイレクト
     // タイトルは先頭行 or 日時
     const now = new Date()
     const defaultTitle = `Diagram ${now.toLocaleString()}`
     const title = defaultTitle
-    let dataUrl: string | undefined
-    try {
-      // 既存の画像化処理を流用するため、プレビューDOMを検索
-      const node = (componentRef.current || previewRef.current) as HTMLElement | null
-      if (node) {
-        // 動的 import を既存関数から再利用できないため、ここで import
-        const htmlToImage = await import('html-to-image')
-        const dpr = Math.min(window.devicePixelRatio || 1, 2)
-        dataUrl = await htmlToImage.toPng(node, {
-          pixelRatio: dpr,
-          backgroundColor: '#ffffff'
-        })
-      }
-    } catch {}
+    const dataUrl = await capturePreview()
 
     const payload = {
       title,
       code,
       mode: mode === 'react' ? 'jsx' : 'html',
-      isPrivate: false,
+      isPrivate: true,
       imageDataUrl: dataUrl
     }
     const res = await fetch('/api/diagrams', {
@@ -406,11 +463,16 @@ const ComponentPreviewer: React.FC = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     })
-    if (!res.ok) throw new Error('Save failed')
+    if (!res.ok) {
+      if (res.status === 401) { window.location.href = '/auth/google/login'; return }
+      showToast('error', '保存に失敗しました')
+      return
+    }
     const json = await res.json()
     // 保存後に個別ページへ遷移（OGP対応）
     if (json.id) {
       window.history.pushState({}, '', `/d/${json.id}`)
+      showToast('success', '保存しました')
     }
   }
 
@@ -879,6 +941,12 @@ export default CounterApp;`;
 
   return (
     <div className="bg-white min-h-screen flex flex-col items-stretch" style={{ width: '100%', maxWidth: '100%', margin: 0, padding: 0 }}>
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed top-3 right-3 z-50 px-3 py-2 rounded shadow text-white ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'}`}>
+          {toast.message}
+        </div>
+      )}
       {/* デスクトップ：帯（ヘッダー） */}
       {!isMobileDevice && showHeader && (
         <header

@@ -41,11 +41,13 @@ async function hmacSign(secret: string, payload: string) {
 async function setSession(c: any, secret: string, user: SessionUser) {
   const payload = btoa(JSON.stringify(user))
   const sig = await hmacSign(secret, payload)
+  const url = new URL(c.req.url)
+  const isLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1'
   setCookie(c, 'session', `${payload}.${sig}`, {
     path: '/',
     httpOnly: true,
     sameSite: 'Lax',
-    secure: true,
+    secure: !isLocal,
     maxAge: 60 * 60 * 24 * 30
   })
 }
@@ -176,11 +178,13 @@ app.get('/api/diagrams/:id', async (c) => {
 
 app.post('/api/diagrams', async (c) => {
   const user = (c as any).var.user as SessionUser | null
+  if (!user) {
+    return c.json({ ok: false, login: true, loginUrl: '/auth/google/login' }, 401)
+  }
   const body = await c.req.json<{ title?: string; code: string; mode: 'html'|'jsx'; isPrivate?: boolean; imageDataUrl?: string }>()
   const id = crypto.randomUUID()
   const title = body.title || 'Untitled Diagram'
-  // 未ログインの場合の private 要求は無視（公開として保存）
-  const isPrivate = user ? !!body.isPrivate : false
+  const isPrivate = body.isPrivate ?? true
 
   // Save base first
   await c.env.DB.prepare(
@@ -200,10 +204,11 @@ app.post('/api/diagrams', async (c) => {
   return c.json({ id, title, imageKey })
 })
 
-// OGP image serving: /og/:id -> fetch from R2
+// OGP image serving: /og/:id -> fetch from R2 (DB lookup)
 app.get('/og/:id', async (c) => {
   const id = c.req.param('id')
-  const key = `diagrams/${id}.png`
+  const row = await c.env.DB.prepare('SELECT image_key FROM diagrams WHERE id = ?').bind(id).first<any>()
+  const key = row?.image_key || `diagrams/${id}.png`
   const obj = await c.env.R2.get(key)
   if (!obj) return c.text('Not found', 404)
   return new Response(obj.body, {
