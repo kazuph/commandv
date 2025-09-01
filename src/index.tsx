@@ -43,6 +43,7 @@ async function setSession(c: any, secret: string, user: SessionUser) {
   const sig = await hmacSign(secret, payload)
   const url = new URL(c.req.url)
   const isLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1'
+  // cookie値は明示的にencodeしない（hono側で適切に処理）
   setCookie(c, 'session', `${payload}.${sig}`, {
     path: '/',
     httpOnly: true,
@@ -81,7 +82,8 @@ const app = new Hono<Env>()
 
 // Attach user to context if logged in
 app.use('*', async (c, next) => {
-  const user = await getSession(c, c.env.SESSION_SECRET || c.env.MY_VAR)
+  const secret = c.env.SESSION_SECRET || c.env.MY_VAR
+  const user = await getSession(c, secret)
   ;(c as any).var ||= {}
   ;(c as any).var.user = user
   return next()
@@ -173,11 +175,21 @@ app.get('/auth/me', (c) => {
 })
 
 // Debug helper: shows cookies seen by server
-app.get('/auth/debug', (c) => {
-  return c.json({
-    cookie: c.req.header('cookie') || null,
-    me: (c as any).var.user || null
-  })
+app.get('/auth/debug', async (c) => {
+  const raw = getCookie(c, 'session')
+  const secret = c.env.SESSION_SECRET || c.env.MY_VAR
+  let info: any = { raw }
+  if (raw) {
+    const [payload, sig] = raw.split('.')
+    info.payload = payload
+    info.sig = sig
+    const expected = await hmacSign(secret, payload)
+    info.expected = expected
+    info.sigMatches = expected === sig
+    try { info.parsed = JSON.parse(atob(payload)) } catch {}
+  }
+  info.me = (c as any).var.user || null
+  return c.json(info)
 })
 
 // Diagrams API
