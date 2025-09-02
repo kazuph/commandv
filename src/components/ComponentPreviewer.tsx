@@ -55,6 +55,7 @@ import WelcomeScreen from './WelcomeScreen';
 import SampleCounter from './SampleCounter';
 import RecentDiagramStrip from './RecentDiagramStrip';
 import UserMenu from './UserMenu';
+import ShareDialog from './ShareDialog';
 
 // Function to convert SVG to data URL for download
 const svgToDataURL = (svgElement: SVGElement): string => {
@@ -525,12 +526,26 @@ const ComponentPreviewer: React.FC = () => {
     if (input === null) return // キャンセル
     const title = (input.trim() || defaultTitle).slice(0, 200)
     const dataUrl = await capturePreview()
+    // 説明のデフォルト抽出
+    let defaultDesc = ''
+    if (mode === 'html') {
+      try {
+        const parser = new DOMParser()
+        const doc = parser.parseFromString(code, 'text/html')
+        const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content') || ''
+        const firstP = doc.querySelector('p')?.textContent?.trim() || ''
+        defaultDesc = (metaDesc || firstP || '').slice(0, 300)
+      } catch {}
+    }
+    const inputDesc = window.prompt('説明（SlackやSNSのプレビューに表示されます。省略可）', defaultDesc)
+    const description = (inputDesc || '').trim().slice(0, 300) || undefined
 
     const payload = {
       title,
       code,
       mode: mode === 'react' ? 'jsx' : 'html',
       isPrivate: true,
+      description,
       imageDataUrl: dataUrl
     }
     const res = await fetch('/api/diagrams', {
@@ -550,6 +565,47 @@ const ComponentPreviewer: React.FC = () => {
       showToast('success', '保存しました')
       setCurrentId(json.id as string)
       setCurrentTitle(title)
+    }
+  }
+
+  // Anonymous quick share (no login, 3-day expiry)
+  const handleQuickShare = async () => {
+    // default title
+    const now = new Date()
+    let defaultTitle = `Diagram ${now.toLocaleString()}`
+    if (mode === 'html') {
+      const found = extractHtmlTitle(code)
+      if (found) defaultTitle = found
+    }
+    const input = window.prompt('共有用タイトル（省略可）', defaultTitle)
+    if (input === null) return
+    const title = (input.trim() || defaultTitle).slice(0, 200)
+    const dataUrl = await capturePreview()
+    // 説明のデフォルト抽出
+    let defaultDesc = ''
+    if (mode === 'html') {
+      try {
+        const parser = new DOMParser()
+        const doc = parser.parseFromString(code, 'text/html')
+        const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content') || ''
+        const firstP = doc.querySelector('p')?.textContent?.trim() || ''
+        defaultDesc = (metaDesc || firstP || '').slice(0, 300)
+      } catch {}
+    }
+    const inputDesc = window.prompt('説明（SlackやSNSのプレビューに表示されます。省略可）', defaultDesc)
+    const description = (inputDesc || '').trim().slice(0, 300) || undefined
+    try {
+      const res = await fetch('/api/diagrams/guest', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, description, code, mode: mode === 'react' ? 'jsx' : 'html', imageDataUrl: dataUrl })
+      })
+      if (!res.ok) { showToast('error', 'クイック共有に失敗しました'); return }
+      const j = await res.json()
+      setShareLink(j.shareUrl || null)
+      setShareExpiresAt(j.expiresAt ?? null)
+      setShareOpen(true)
+    } catch {
+      showToast('error', 'クイック共有に失敗しました')
     }
   }
 
@@ -992,6 +1048,33 @@ export default CounterApp;`;
     })()
   }, [])
 
+  // /s/:token でのロード（共有ビュー: 読み取り専用）
+  const [sharedView, setSharedView] = useState(false)
+  const [shareExpired, setShareExpired] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
+  const [shareLink, setShareLink] = useState<string | null>(null)
+  const [shareExpiresAt, setShareExpiresAt] = useState<number | null>(null)
+  useEffect(() => {
+    const m = window.location.pathname.match(/^\/s\/([a-f0-9]{32,})$/i)
+    if (!m) return
+    const token = m[1]
+    setSharedView(true)
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/share/${token}`, { headers: { 'Accept': 'application/json' } })
+        if (res.status === 401) { setShareExpired(true); return }
+        if (!res.ok) return
+        const row = await res.json()
+        const serverMode = (row.mode as string) === 'jsx' ? 'react' : 'html'
+        setMode(serverMode as 'react' | 'html')
+        setCode(row.code as string)
+        setCurrentId(row.id as string)
+        setCurrentTitle((row.title as string) || null)
+        if (serverMode === 'react') await compileAndSetComponent(row.code as string)
+      } catch {}
+    })()
+  }, [])
+
   // ペースト時にヘッダーを非表示
   useEffect(() => {
     if (isMobileDevice) return;
@@ -1175,12 +1258,40 @@ export default CounterApp;`;
             <div className="absolute top-2 right-2 flex gap-2 z-20 items-center">
               <UserMenu compact />
               <button
+                className="p-2 bg-gradient-to-br from-cyan-500 to-sky-600 text-white rounded-full shadow hover:opacity-90"
+                onClick={handleQuickShare}
+                aria-label="クイック共有"
+              >
+                {lucideReact.ExternalLink && <lucideReact.ExternalLink size={22} />}
+              </button>
+              {!sharedView && (
+                <button
+                  className="p-2 bg-gradient-to-br from-cyan-500 to-sky-600 text-white rounded-full shadow hover:opacity-90"
+                  onClick={async () => {
+                    if (!currentId) return
+                    try {
+                      const r = await fetch(`/api/diagrams/${currentId}/share`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'enable' }) })
+                      if (r.status === 401) { window.location.href = '/auth/google/login'; return }
+                      if (!r.ok) { alert('共有リンクの作成に失敗しました'); return }
+                      const j = await r.json()
+                      setShareLink(j.shareUrl || null)
+                      setShareExpiresAt(j.expiresAt ?? null)
+                      setShareOpen(true)
+                    } catch { alert('共有リンクの作成に失敗しました') }
+                  }}
+                  aria-label="共有"
+                >
+                  {lucideReact.Share2 && <lucideReact.Share2 size={22} />}
+                </button>
+              )}
+              <button
                 className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full shadow hover:opacity-90"
                 onClick={handleDownloadPreview}
                 aria-label="画像保存"
               >
                 {lucideReact.Download && <lucideReact.Download size={24} />}
               </button>
+              {!sharedView && (
               <button
                 className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-full shadow hover:opacity-90"
                 onClick={async () => { try { await handleSaveDiagram() } catch {} }}
@@ -1188,6 +1299,8 @@ export default CounterApp;`;
               >
                 {lucideReact.Save && <lucideReact.Save size={24} />}
               </button>
+              )}
+              {!sharedView && (
               <button
                 className="p-2 bg-red-500 text-white rounded-full shadow hover:opacity-90"
                 onClick={handleDeleteCurrent}
@@ -1195,6 +1308,7 @@ export default CounterApp;`;
               >
                 {lucideReact.Trash && <lucideReact.Trash size={22} />}
               </button>
+              )}
               <button
                 className="p-2 bg-white/80 backdrop-blur text-gray-700 rounded-full shadow hover:bg-white"
                 onClick={handleClear}
@@ -1220,6 +1334,34 @@ export default CounterApp;`;
               <div className="hidden md:block">
                 <UserMenu compact />
               </div>
+              {/* Quick Share is always available (no login required) */}
+              <button
+                className="p-2 bg-white/70 backdrop-blur-sm text-cyan-700 rounded-full shadow-lg hover:bg-white/90 transition-all duration-200"
+                onClick={handleQuickShare}
+                aria-label="Quick Share"
+              >
+                {lucideReact.ExternalLink && <lucideReact.ExternalLink size={20} />}
+              </button>
+              {!sharedView && (
+                <button
+                  className="p-2 bg-white/70 backdrop-blur-sm text-gray-700 rounded-full shadow-lg hover:bg-white/90 transition-all duration-200"
+                  onClick={async () => {
+                    if (!currentId) return
+                    try {
+                      const r = await fetch(`/api/diagrams/${currentId}/share`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'enable' }) })
+                      if (r.status === 401) { window.location.href = '/auth/google/login'; return }
+                      if (!r.ok) { showToast('error', '共有リンク作成に失敗'); return }
+                      const j = await r.json()
+                      setShareLink(j.shareUrl || null)
+                      setShareExpiresAt(j.expiresAt ?? null)
+                      setShareOpen(true)
+                    } catch { showToast('error', '共有リンク作成に失敗') }
+                  }}
+                  aria-label="Share"
+                >
+                  {lucideReact.Share2 && <lucideReact.Share2 size={20} />}
+                </button>
+              )}
               <button
                 className="p-2 bg-white/70 backdrop-blur-sm text-gray-700 rounded-full shadow-lg hover:bg-white/90 transition-all duration-200"
                 onClick={() => setShowCode(!showCode)}
@@ -1234,6 +1376,7 @@ export default CounterApp;`;
               >
                 {lucideReact.Download && <lucideReact.Download size={20} />}
               </button>
+              {!sharedView && (
               <button
                 className="p-2 bg-white/70 backdrop-blur-sm text-gray-700 rounded-full shadow-lg hover:bg-white/90 transition-all duration-200"
                 onClick={async () => { try { await handleSaveDiagram() } catch {} }}
@@ -1241,6 +1384,8 @@ export default CounterApp;`;
               >
                 {lucideReact.Save && <lucideReact.Save size={20} />}
               </button>
+              )}
+              {!sharedView && (
               <button
                 className="p-2 bg-white/70 backdrop-blur-sm text-red-600 rounded-full shadow-lg hover:bg-white/90 transition-all duration-200"
                 onClick={handleDeleteCurrent}
@@ -1248,6 +1393,7 @@ export default CounterApp;`;
               >
                 {lucideReact.Trash && <lucideReact.Trash size={20} />}
               </button>
+              )}
               <button
                 className="p-2 bg-white/70 backdrop-blur-sm text-gray-700 rounded-full shadow-lg hover:bg-white/90 transition-all duration-200"
                 onClick={handleClear}
@@ -1255,6 +1401,16 @@ export default CounterApp;`;
               >
                 {lucideReact.X && <lucideReact.X size={20} />}
               </button>
+        </div>
+      )}
+
+      {/* 共有期限切れの案内（ログインを促す） */}
+          {sharedView && shareExpired && (
+            <div className="absolute top-16 right-4 z-20">
+              <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-2 rounded-lg shadow">
+                共有の有効期限が切れています。閲覧するにはログインしてください。
+                <a href="/auth/google/login" className="inline-block ml-2 text-blue-600 underline">ログイン</a>
+              </div>
             </div>
           )}
           {mode === 'html' ? (
@@ -1303,6 +1459,9 @@ export default CounterApp;`;
               )}
             </div>
           )}
+
+          {/* Share dialog */}
+          <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} shareUrl={shareLink} expiresAt={shareExpiresAt || undefined} />
         </div>
       </div>
     </div>

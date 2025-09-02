@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { renderToString } from 'react-dom/server'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
+import { poweredBy } from 'hono/powered-by'
 
 type D1Database = import('@cloudflare/workers-types').D1Database
 type R2Bucket = import('@cloudflare/workers-types').R2Bucket
@@ -85,6 +86,9 @@ function decodeJwtPayload(idToken: string): any {
 
 const app = new Hono<Env>()
 
+// basic hardening header
+app.use('*', poweredBy())
+
 // Attach user to context if logged in
 app.use('*', async (c, next) => {
   const secret = c.env.SESSION_SECRET || c.env.MY_VAR
@@ -99,6 +103,40 @@ app.get('/api/clock', (c) => {
     time: new Date().toLocaleTimeString()
   })
 })
+
+// Helpers: HMAC-SHA256 (hex) and small utilities
+async function hmacHex(secret: string, data: string) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data))
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2,'0')).join('')
+}
+
+function getClientIP(c: any): string {
+  return c.req.header('CF-Connecting-IP') || c.req.header('X-Forwarded-For') || '0.0.0.0'
+}
+
+function genTokenHex(bytes = 32): string {
+  const arr = new Uint8Array(bytes)
+  crypto.getRandomValues(arr)
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+async function checkRate(c: any, bucket: string, limit: number, windowSec: number): Promise<boolean> {
+  const now = Math.floor(Date.now()/1000)
+  const secret = c.env.SESSION_SECRET || c.env.MY_VAR
+  const ip = getClientIP(c)
+  const keyHash = await hmacHex(secret, `${bucket}:${ip}:${windowSec}`)
+  const row = await c.env.DB.prepare('SELECT count, reset_at FROM rate_limits WHERE key = ?').bind(keyHash).first<any>()
+  if (!row || now >= (row.reset_at as number)) {
+    await c.env.DB.prepare('INSERT OR REPLACE INTO rate_limits (key, count, reset_at) VALUES (?, ?, ?)')
+      .bind(keyHash, 1, now + windowSec).run()
+    return true
+  }
+  const count = (row.count as number) + 1
+  if (count > limit) return false
+  await c.env.DB.prepare('UPDATE rate_limits SET count = ? WHERE key = ?').bind(count, keyHash).run()
+  return true
+}
 
 // OAuth: Google
 app.get('/auth/google/login', (c) => {
@@ -240,15 +278,15 @@ app.post('/api/diagrams', async (c) => {
   if (!user) {
     return c.json({ ok: false, login: true, loginUrl: '/auth/google/login' }, 401)
   }
-  const body = await c.req.json<{ title?: string; code: string; mode: 'html'|'jsx'; isPrivate?: boolean; imageDataUrl?: string }>()
+  const body = await c.req.json<{ title?: string; description?: string; code: string; mode: 'html'|'jsx'; isPrivate?: boolean; imageDataUrl?: string }>()
   const id = crypto.randomUUID()
   const title = body.title || 'Untitled Diagram'
   const isPrivate = body.isPrivate ?? true
 
   // Save base first
   await c.env.DB.prepare(
-    `INSERT INTO diagrams (id, user_id, title, mode, code, is_private) VALUES (?, ?, ?, ?, ?, ?)`
-  ).bind(id, user?.id ?? null, title, body.mode, body.code, isPrivate ? 1 : 0).run()
+    `INSERT INTO diagrams (id, user_id, title, description, mode, code, is_private) VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).bind(id, user?.id ?? null, title, (body.description || null), body.mode, body.code, isPrivate ? 1 : 0).run()
 
   let imageKey: string | undefined
   if (body.imageDataUrl?.startsWith('data:image/')) {
@@ -261,6 +299,52 @@ app.post('/api/diagrams', async (c) => {
   }
 
   return c.json({ id, title, imageKey })
+})
+
+// Anonymous quick share: create + share (3-day expiry), no auth required
+app.post('/api/diagrams/guest', async (c) => {
+  // basic rate limits: 10/min, 100/day per IP
+  const okMin = await checkRate(c, 'guest:create:min', 10, 60)
+  const okDay = await checkRate(c, 'guest:create:day', 100, 86400)
+  if (!okMin || !okDay) return c.text('Too Many Requests', 429)
+
+  const body = await c.req.json<{ title?: string; description?: string; code: string; mode: 'html'|'jsx'; imageDataUrl?: string }>().catch(() => null)
+  if (!body || typeof body.code !== 'string' || (body.mode !== 'html' && body.mode !== 'jsx')) return c.text('Bad Request', 400)
+  if (body.code.length > 200_000) return c.text('Payload Too Large', 413)
+
+  const id = crypto.randomUUID()
+  const title = (body.title || 'Untitled Diagram').slice(0, 200)
+  const expiresAt = Math.floor(Date.now()/1000) + 3*24*60*60 // 3 days
+
+  // simple description fallback: strip HTML tags and clip
+  const descFallback = (() => {
+    try {
+      const text = body.code.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ')
+      return text.replace(/\s+/g, ' ').trim().slice(0, 300)
+    } catch { return null }
+  })()
+  await c.env.DB.prepare(
+    `INSERT INTO diagrams (id, user_id, title, description, mode, code, is_private, share_enabled, share_token, share_expires_at)
+     VALUES (?, NULL, ?, ?, ?, ?, 1, 1, ?, ?)`
+  ).bind(id, title, (body.description || descFallback), body.mode, body.code, genTokenHex(32), expiresAt).run()
+
+  // optional image store
+  let imageKey: string | undefined
+  if (body.imageDataUrl?.startsWith('data:image/')) {
+    const comma = body.imageDataUrl.indexOf(',')
+    const b64 = body.imageDataUrl.slice(comma + 1)
+    const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+    imageKey = `diagrams/${id}.png`
+    await c.env.R2.put(imageKey, bin, { httpMetadata: { contentType: 'image/png' } })
+    await c.env.DB.prepare(`UPDATE diagrams SET image_key = ?, updated_at = strftime('%s','now') WHERE id = ?`).bind(imageKey, id).run()
+  }
+
+  const origin = new URL(c.req.url).origin
+  // fetch token back
+  const row = await c.env.DB.prepare('SELECT share_token, share_expires_at FROM diagrams WHERE id = ?').bind(id).first<any>()
+  const token = row?.share_token as string
+  const shareUrl = `${origin}/s/${token}`
+  return c.json({ id, title, imageKey, shareUrl, expiresAt: row?.share_expires_at })
 })
 
 app.delete('/api/diagrams/:id', async (c) => {
@@ -284,26 +368,97 @@ app.patch('/api/diagrams/:id', async (c) => {
   const user = c.get('user')
   if (!user) return c.text('Unauthorized', 401)
   const id = c.req.param('id')
-  const body = await c.req.json<{ title?: string }>().catch(() => ({} as any))
+  const body = await c.req.json<{ title?: string; description?: string }>().catch(() => ({} as any))
   const row = await c.env.DB.prepare('SELECT user_id FROM diagrams WHERE id = ?').bind(id).first<any>()
   if (!row) return c.text('Not found', 404)
   if (row.user_id !== user.id) return c.text('Forbidden', 403)
-  if (typeof body.title === 'string') {
-    const title = body.title.trim().slice(0, 200)
-    await c.env.DB.prepare(`UPDATE diagrams SET title = ?, updated_at = strftime('%s','now') WHERE id = ?`).bind(title, id).run()
-    return c.json({ ok: true, id, title })
+  if (typeof body.title === 'string' || typeof body.description === 'string') {
+    const title = typeof body.title === 'string' ? body.title.trim().slice(0, 200) : undefined
+    const desc = typeof body.description === 'string' ? body.description.trim().slice(0, 300) : undefined
+    const sql = `UPDATE diagrams SET ${title !== undefined ? 'title = ?,' : ''} ${desc !== undefined ? 'description = ?,' : ''} updated_at = strftime('%s','now') WHERE id = ?`
+    const binds: any[] = []
+    if (title !== undefined) binds.push(title)
+    if (desc !== undefined) binds.push(desc)
+    binds.push(id)
+    await c.env.DB.prepare(sql).bind(...binds).run()
+    return c.json({ ok: true, id, title, description: desc })
   }
   return c.json({ ok: false }, 400)
+})
+
+// Share link management
+app.post('/api/diagrams/:id/share', async (c) => {
+  const user = c.get('user')
+  if (!user) return c.text('Unauthorized', 401)
+  const id = c.req.param('id')
+  const body = await c.req.json<{ action: 'enable'|'disable'|'rotate'; expiresInDays?: number }>().catch(() => ({ action: 'enable' } as any))
+  const row = await c.env.DB.prepare('SELECT user_id, share_enabled, share_token FROM diagrams WHERE id = ?').bind(id).first<any>()
+  if (!row) return c.text('Not found', 404)
+  if (row.user_id !== user.id) return c.text('Forbidden', 403)
+
+  const now = Math.floor(Date.now() / 1000)
+  const expiresAt = body.expiresInDays ? now + Math.floor(Number(body.expiresInDays) * 86400) : null
+
+  const genToken = () => genTokenHex(32)
+
+  let token = (row.share_token as string) || null
+  if (body.action === 'disable') {
+    await c.env.DB.prepare(`UPDATE diagrams SET share_enabled = 0, updated_at = strftime('%s','now') WHERE id = ?`).bind(id).run()
+  } else if (body.action === 'rotate') {
+    token = genToken()
+    await c.env.DB.prepare(`UPDATE diagrams SET share_enabled = 1, share_token = ?, share_expires_at = ?, updated_at = strftime('%s','now') WHERE id = ?`).bind(token, expiresAt, id).run()
+  } else {
+    // enable
+    token = token || genToken()
+    await c.env.DB.prepare(`UPDATE diagrams SET share_enabled = 1, share_token = ?, share_expires_at = ?, updated_at = strftime('%s','now') WHERE id = ?`).bind(token, expiresAt, id).run()
+  }
+
+  const origin = new URL(c.req.url).origin
+  const shareUrl = token ? `${origin}/s/${token}` : null
+  return c.json({ ok: true, shareUrl, token, expiresAt })
+})
+
+// Resolve shared diagram by token (read-only)
+app.get('/api/share/:token', async (c) => {
+  const token = c.req.param('token')
+  if (!token || token.length < 32) return c.text('Not found', 404)
+  // First try as active share (not expired)
+  const active = await c.env.DB.prepare(
+    `SELECT id, title, mode, code, image_key, created_at, updated_at FROM diagrams
+     WHERE share_enabled = 1 AND share_token = ? AND (share_expires_at IS NULL OR share_expires_at > strftime('%s','now'))`
+  ).bind(token).first<any>()
+  if (active) {
+    return c.json(active, 200, {
+      'Cache-Control': 'private, max-age=0, no-store',
+      'X-Robots-Tag': 'noindex, nofollow, noarchive'
+    })
+  }
+  // If expired, require login but allow viewing by any logged-in user
+  const user = c.get('user')
+  if (!user) return c.json({ ok: false, login: true, loginUrl: '/auth/google/login', reason: 'expired' }, 401)
+  const row = await c.env.DB.prepare(
+    `SELECT id, title, mode, code, image_key, created_at, updated_at FROM diagrams
+     WHERE share_token = ?`
+  ).bind(token).first<any>()
+  if (!row) return c.text('Not found', 404)
+  return c.json(row, 200, { 'Cache-Control': 'private, max-age=0, no-store', 'X-Robots-Tag': 'noindex, nofollow, noarchive' })
 })
 
 // OGP image serving: /og/:id -> fetch from R2 (DB lookup)
 app.get('/og/:id', async (c) => {
   const id = c.req.param('id')
-  const row = await c.env.DB.prepare('SELECT user_id, is_private, image_key FROM diagrams WHERE id = ?').bind(id).first<any>()
+  const row = await c.env.DB.prepare(
+    'SELECT user_id, is_private, image_key, share_enabled, share_expires_at FROM diagrams WHERE id = ?'
+  ).bind(id).first<any>()
   if (!row) return c.text('Not found', 404)
   if (row.is_private) {
-    const user = c.get('user')
-    if (!user || user.id !== row.user_id) return c.text('Forbidden', 403)
+    // Allow if sharing is currently enabled and not expired
+    const nowOk = !row.share_expires_at || (row.share_expires_at as number) > Math.floor(Date.now()/1000)
+    const shareOk = (row.share_enabled as number) === 1 && nowOk
+    if (!shareOk) {
+      const user = c.get('user')
+      if (!user || user.id !== row.user_id) return c.text('Forbidden', 403)
+    }
   }
   const key = row.image_key || `diagrams/${id}.png`
   const obj = await c.env.R2.get(key)
@@ -311,9 +466,102 @@ app.get('/og/:id', async (c) => {
   return new Response(obj.body, {
     headers: {
       'Content-Type': obj.httpMetadata?.contentType || 'image/png',
-      'Cache-Control': 'public, max-age=31536000, immutable'
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'X-Robots-Tag': 'noindex'
     }
   })
+})
+
+// robots.txt: disallow shared paths so crawlers politely skip
+app.get('/robots.txt', (c) => {
+  // Permit Slackbot (and other common unfurlers) while disallowing generic crawlers
+  const body = `User-agent: *\nDisallow: /s/\n\nUser-agent: Slackbot\nAllow: /s/\nUser-agent: Twitterbot\nAllow: /s/\nUser-agent: Facebot\nAllow: /s/\nUser-agent: facebookexternalhit\nAllow: /s/\nUser-agent: LinkedInBot\nAllow: /s/\nUser-agent: Discordbot\nAllow: /s/\n`
+  return c.text(body, 200, { 'Content-Type': 'text/plain; charset=utf-8' })
+})
+
+// Shared view page: /s/:token with noindex headers
+function isSocialBot(ua: string | null | undefined): boolean {
+  if (!ua) return false
+  ua = ua.toLowerCase()
+  return (
+    ua.includes('slackbot') ||
+    ua.includes('twitterbot') ||
+    ua.includes('facebookexternalhit') ||
+    ua.includes('facebot') ||
+    ua.includes('linkedinbot') ||
+    ua.includes('discordbot') ||
+    ua.includes('telegrambot')
+  )
+}
+
+app.get('/s/:token', async (c) => {
+  const token = c.req.param('token')
+  // Lookup minimal info for OGP (optional)
+  let ogTitle = 'Shared Diagram'
+  let ogImage: string | undefined
+  let ogDesc: string | undefined
+  let id: string | undefined
+  let ogUrl = new URL(c.req.url).toString()
+  if (token && token.length >= 32) {
+    const row = await c.env.DB.prepare(
+      `SELECT id, title, description FROM diagrams WHERE share_enabled = 1 AND share_token = ? AND (share_expires_at IS NULL OR share_expires_at > strftime('%s','now'))`
+    ).bind(token).first<any>()
+    if (row) {
+      id = row.id as string
+      ogTitle = row.title || ogTitle
+      ogDesc = row.description || undefined
+      ogImage = new URL(`/og/${row.id}`, c.req.url).toString()
+    }
+  }
+  const ua = c.req.header('user-agent')
+  const allowUnfurl = isSocialBot(ua)
+  const html = renderToString(
+    <html style={{width: '100%', margin: 0, padding: 0}}>
+      <head>
+        <meta charSet="utf-8" />
+        <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" name="viewport" />
+        {!allowUnfurl && <meta name="robots" content="noindex, nofollow, noarchive" />}
+        {allowUnfurl && <meta name="description" content={ogDesc || ogTitle} />}
+        <title>{ogTitle}</title>
+        {ogImage && (
+          <>
+            <meta property="og:title" content={ogTitle} />
+            <meta property="og:type" content="website" />
+            <meta property="og:image" content={ogImage} />
+            <meta property="og:image:width" content="1200" />
+            <meta property="og:image:height" content="630" />
+            <meta property="og:site_name" content="CommandV" />
+            <meta property="og:url" content={ogUrl} />
+            <meta property="og:description" content={ogDesc || ogTitle} />
+            <meta name="twitter:card" content="summary_large_image" />
+            <meta name="twitter:title" content={ogTitle} />
+            <meta name="twitter:image" content={ogImage} />
+            <meta name="twitter:description" content={ogDesc || ogTitle} />
+            <link rel="canonical" href={ogUrl} />
+          </>
+        )}
+        <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMzhiZGY4IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM0ZjQ2ZTUiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0idXJsKCNncmFkKSIgcng9IjE1IiByeT0iMTUiLz4KICA8ZyBmaWxsPSIjZmZmZmZmIj4KICAgIDwhLS0gQ29tbWFuZCAo4oyWKSBzeW1ib2wgLS0+CiAgICA8cGF0aCBkPSJNMjUgMjUgSDQwIFY0MCBIMjUgWiIgLz4KICAgIDxwYXRoIGQ9Ik02MCAyNSBINzUgVjQwIEg2MCBaIiAvPgogICAgPHBhdGggZD0iTTI1IDYwIEg0MCBWNzUgSDI1IFoiIC8+CiAgICA8cGF0aCBkPSJNNjAgNjAgSDc1IFY3NSBINjAgWiIgLz4KICAgIDxwYXRoIGQ9Ik00MCA0MCBINjAgVjYwIEg0MCBaIiAvPgogIDwvZz4KPC9zdmc+" />
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script>
+          {`
+          tailwind.config = { theme: { extend: {} } }
+          `}
+        </script>
+        <link href="/static/style.css" rel="stylesheet" />
+        {import.meta.env.PROD ? (
+          <script type="module" src="/static/client.js"></script>
+        ) : (
+          <script type="module" src="/src/client.tsx"></script>
+        )}
+      </head>
+      <body style={{margin: 0, padding: 0, overflowX: 'hidden', width: '100%', maxWidth: '100%', backgroundColor: 'white'}}>
+        <div id="root" style={{width: '100%', maxWidth: '100%'}}></div>
+      </body>
+    </html>
+  )
+  const headers: Record<string,string> = { 'Referrer-Policy': 'no-referrer' }
+  if (!allowUnfurl) headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive'
+  return c.html(html, 200, headers)
 })
 
 app.get('*', async (c) => {
@@ -322,11 +570,13 @@ app.get('*', async (c) => {
   const match = u.pathname.match(/^\/d\/([a-z0-9\-]+)$/i)
   let ogTitle = 'CommandV'
   let ogImage: string | undefined
+  let ogDesc: string | undefined
   if (match) {
     const id = match[1]
-    const row = await c.env.DB.prepare('SELECT title FROM diagrams WHERE id = ?').bind(id).first<any>()
+    const row = await c.env.DB.prepare('SELECT title, description FROM diagrams WHERE id = ?').bind(id).first<any>()
     if (row) {
       ogTitle = row.title || ogTitle
+      ogDesc = row.description || undefined
       ogImage = new URL(`/og/${id}`, c.req.url).toString()
     }
   }
@@ -340,12 +590,19 @@ app.get('*', async (c) => {
           <title>{ogTitle}</title>
           {ogImage && (
             <>
+              <meta name="description" content={ogDesc || ogTitle} />
               <meta property="og:title" content={ogTitle} />
               <meta property="og:type" content="website" />
               <meta property="og:image" content={ogImage} />
+              <meta property="og:image:width" content="1200" />
+              <meta property="og:image:height" content="630" />
+              <meta property="og:site_name" content="CommandV" />
+              {ogDesc && <meta property="og:description" content={ogDesc} />}
               <meta name="twitter:card" content="summary_large_image" />
               <meta name="twitter:title" content={ogTitle} />
               <meta name="twitter:image" content={ogImage} />
+              {ogDesc && <meta name="twitter:description" content={ogDesc} />}
+              <link rel="canonical" href={new URL(c.req.url).toString()} />
             </>
           )}
           <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMzhiZGY4IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM0ZjQ2ZTUiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0idXJsKCNncmFkKSIgcng9IjE1IiByeT0iMTUiLz4KICA8ZyBmaWxsPSIjZmZmZmZmIj4KICAgIDwhLS0gQ29tbWFuZCAo4oyWKSBzeW1ib2wgLS0+CiAgICA8cGF0aCBkPSJNMjUgMjUgSDQwIFY0MCBIMjUgWiIgLz4KICAgIDxwYXRoIGQ9Ik02MCAyNSBINzUgVjQwIEg2MCBaIiAvPgogICAgPHBhdGggZD0iTTI1IDYwIEg0MCBWNzUgSDI1IFoiIC8+CiAgICA8cGF0aCBkPSJNNjAgNjAgSDc1IFY3NSBINjAgWiIgLz4KICAgIDxwYXRoIGQ9Ik00MCA0MCBINjAgVjYwIEg0MCBaIiAvPgogIDwvZz4KPC9zdmc+" />

@@ -14,6 +14,23 @@
   - `papaparse` - CSV parsing
   - React Icons - Various icon sets
 - **Export to Image**: Save your component previews as high-quality images with proper gradient rendering
+
+## Share Links (URL共有)
+
+- After saving a diagram, click the Share button to generate a secret URL like `/s/<64-hex-token>` and copy it to your clipboard.
+- Only people with the URL can view; the link is unguessable (256-bit token).
+- Shared pages are delivered with `X-Robots-Tag: noindex, nofollow, noarchive` and meta robots, plus `Referrer-Policy: no-referrer` to reduce bot discovery via crawlers and referrers. `robots.txt` also disallows `/s/`.
+- You can disable or rotate the link via API: `POST /api/diagrams/:id/share` with `{ action: 'disable' | 'rotate' }`.
+
+### Sharing Behavior
+- Logged-in share links: no expiration (∞).
+- Anonymous Quick Share: 3-day expiration; after expiry, login is required to view.
+
+### Anonymous Quick Share (No Login)
+- Use `クイック共有` to create a shareable link without logging in.
+- Expiration: 3 days. After expiry, the link stops resolving publicly; content remains stored and is viewable only after login.
+- Endpoint: `POST /api/diagrams/guest` with `{ title, code, mode, imageDataUrl? }` returns `{ id, shareUrl, expiresAt }`.
+- Rate limits: basic per-IP limits (10/min, 100/day). Exceeding returns HTTP 429.
 - **No Setup Required**: Works directly in the browser
 - **Modern UI**: Clean, Apple-inspired design
 
