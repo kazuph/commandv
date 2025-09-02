@@ -378,6 +378,9 @@ const ComponentPreviewer: React.FC = () => {
   const [isMobileDevice, setIsMobileDevice] = useState<boolean>(false);
   const [canPaste, setCanPaste] = useState<boolean>(false); // モバイル用ペースト可否
   const [toast, setToast] = useState<{type: 'success'|'error'; message: string} | null>(null);
+  const [currentId, setCurrentId] = useState<string | null>(null);
+  const [currentTitle, setCurrentTitle] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState<boolean>(false);
 
   // HTMLプレビュー用のsrcDocを生成（Mermaid未読み込み時にUMD版を注入）
   const iframeSrcDoc = React.useMemo(() => {
@@ -434,6 +437,10 @@ const ComponentPreviewer: React.FC = () => {
     setCode('')
     setComponent(null)
     setError(null)
+    // タイトルや編集状態もリセット（トップに戻ったときに残らないように）
+    setCurrentId(null)
+    setCurrentTitle(null)
+    setEditingTitle(false)
     // 初期画面に戻すためにモードもReactに戻す
     try { setMode('react') } catch {}
     // URLをトップに戻す
@@ -487,14 +494,36 @@ const ComponentPreviewer: React.FC = () => {
     }
   }
 
+  // HTML からデフォルトタイトルを抽出（h1 > title の優先）
+  const extractHtmlTitle = (html: string): string | null => {
+    try {
+      const parser = new DOMParser()
+      // ラップの有無に関わらず text/html で解析
+      const doc = parser.parseFromString(html, 'text/html')
+      const h1 = doc.querySelector('h1')
+      const h1Text = h1?.textContent?.trim()
+      if (h1Text) return h1Text
+      const t = doc.querySelector('title')?.textContent?.trim()
+      if (t) return t
+    } catch {}
+    return null
+  }
+
   // Save API 呼び出し
   const handleSaveDiagram = async () => {
     const me = await ensureLogin();
     if (!me) return; // ensureLogin がリダイレクト
-    // タイトルは先頭行 or 日時
+    // タイトルのデフォルト決定
     const now = new Date()
-    const defaultTitle = `Diagram ${now.toLocaleString()}`
-    const title = defaultTitle
+    let defaultTitle = `Diagram ${now.toLocaleString()}`
+    if (mode === 'html') {
+      const found = extractHtmlTitle(code)
+      if (found) defaultTitle = found
+    }
+    // ユーザーに確認
+    const input = window.prompt('ファイル名を入力してください', defaultTitle)
+    if (input === null) return // キャンセル
+    const title = (input.trim() || defaultTitle).slice(0, 200)
     const dataUrl = await capturePreview()
 
     const payload = {
@@ -519,6 +548,8 @@ const ComponentPreviewer: React.FC = () => {
     if (json.id) {
       window.history.pushState({}, '', `/d/${json.id}`)
       showToast('success', '保存しました')
+      setCurrentId(json.id as string)
+      setCurrentTitle(title)
     }
   }
 
@@ -954,6 +985,8 @@ export default CounterApp;`;
         const serverMode = (row.mode as string) === 'jsx' ? 'react' : 'html'
         setMode(serverMode as 'react' | 'html')
         setCode(row.code as string)
+        setCurrentId(id)
+        setCurrentTitle((row.title as string) || null)
         if (serverMode === 'react') await compileAndSetComponent(row.code as string)
       } catch {}
     })()
@@ -1008,6 +1041,50 @@ export default CounterApp;`;
       {toast && (
         <div className={`fixed top-3 right-3 z-50 px-3 py-2 rounded shadow text-white ${toast.type === 'success' ? 'bg-emerald-600' : 'bg-red-600'}`}>
           {toast.message}
+        </div>
+      )}
+      {/* ファイル名チップ（保存後/閲覧時） */}
+      {currentId && (
+        <div className="fixed top-2 left-1/2 -translate-x-1/2 z-40">
+          {!editingTitle ? (
+            <button
+              className="px-3 py-1 text-xs rounded-full bg-black/70 text-white hover:bg-black/80"
+              onClick={() => setEditingTitle(true)}
+              title="クリックして名前を編集"
+            >
+              {currentTitle || 'Untitled'}
+            </button>
+          ) : (
+            <input
+              autoFocus
+              defaultValue={currentTitle || ''}
+              maxLength={200}
+              className="px-2 py-1 text-xs rounded bg-white border border-gray-300 shadow min-w-[12rem]"
+              onKeyDown={async (e) => {
+                if (e.key === 'Escape') { setEditingTitle(false); return }
+                if (e.key === 'Enter') {
+                  const v = (e.currentTarget as HTMLInputElement).value.trim()
+                  const newTitle = (v || 'Untitled').slice(0, 200)
+                  try {
+                    const r = await fetch(`/api/diagrams/${currentId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newTitle }) })
+                    if (r.ok) { setCurrentTitle(newTitle); showToast('success', '名称を更新しました') }
+                    else { showToast('error', '更新に失敗しました') }
+                  } catch { showToast('error', '更新に失敗しました') }
+                  setEditingTitle(false)
+                }
+              }}
+              onBlur={async (e) => {
+                const v = e.currentTarget.value.trim()
+                const newTitle = (v || 'Untitled').slice(0, 200)
+                try {
+                  const r = await fetch(`/api/diagrams/${currentId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newTitle }) })
+                  if (r.ok) { setCurrentTitle(newTitle); showToast('success', '名称を更新しました') }
+                  else { showToast('error', '更新に失敗しました') }
+                } catch { showToast('error', '更新に失敗しました') }
+                setEditingTitle(false)
+              }}
+            />
+          )}
         </div>
       )}
       {/* デスクトップ：帯（ヘッダー） */}

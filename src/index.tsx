@@ -279,6 +279,23 @@ app.delete('/api/diagrams/:id', async (c) => {
   return c.json({ ok: true })
 })
 
+// Update diagram metadata (e.g., title)
+app.patch('/api/diagrams/:id', async (c) => {
+  const user = c.get('user')
+  if (!user) return c.text('Unauthorized', 401)
+  const id = c.req.param('id')
+  const body = await c.req.json<{ title?: string }>().catch(() => ({} as any))
+  const row = await c.env.DB.prepare('SELECT user_id FROM diagrams WHERE id = ?').bind(id).first<any>()
+  if (!row) return c.text('Not found', 404)
+  if (row.user_id !== user.id) return c.text('Forbidden', 403)
+  if (typeof body.title === 'string') {
+    const title = body.title.trim().slice(0, 200)
+    await c.env.DB.prepare(`UPDATE diagrams SET title = ?, updated_at = strftime('%s','now') WHERE id = ?`).bind(title, id).run()
+    return c.json({ ok: true, id, title })
+  }
+  return c.json({ ok: false }, 400)
+})
+
 // OGP image serving: /og/:id -> fetch from R2 (DB lookup)
 app.get('/og/:id', async (c) => {
   const id = c.req.param('id')

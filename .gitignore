@@ -10,3 +10,6 @@ package-lock.json
 yarn.lock
 pnpm-lock.yaml
 bun.lockb
+ 
+# local worktrees
+project.worktree/

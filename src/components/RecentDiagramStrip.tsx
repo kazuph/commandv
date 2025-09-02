@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react'
 type DiagramItem = {
   id: string
   title?: string
+  created_at?: number
 }
 
 const RecentDiagramStrip: React.FC = () => {
@@ -19,7 +20,7 @@ const RecentDiagramStrip: React.FC = () => {
         setMe(meJson.user)
         const res = await fetch('/api/diagrams?limit=30')
         const json = await res.json()
-        setItems((json.items || []).map((x: any) => ({ id: x.id, title: x.title })))
+        setItems((json.items || []).map((x: any) => ({ id: x.id, title: x.title, created_at: x.created_at })))
       } catch {}
     }
     load()
@@ -48,8 +49,15 @@ const RecentDiagramStrip: React.FC = () => {
                   loading="lazy"
                 />
               </div>
-              <div className="px-2 py-1.5 text-sm text-gray-900 truncate">
-                {it.title || 'Untitled'}
+              <div className="px-2 py-1.5">
+                <div className="text-sm text-gray-900 truncate">
+                  {it.title || 'Untitled'}
+                </div>
+                {typeof it.created_at === 'number' && (
+                  <div className="text-[11px] text-gray-500 mt-0.5">
+                    {new Date(it.created_at * 1000).toLocaleString()}
+                  </div>
+                )}
               </div>
             </a>
             <button
