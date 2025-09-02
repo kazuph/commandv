@@ -397,7 +397,13 @@ app.post('/api/diagrams/:id/share', async (c) => {
   if (row.user_id !== user.id) return c.text('Forbidden', 403)
 
   const now = Math.floor(Date.now() / 1000)
-  const expiresAt = body.expiresInDays ? now + Math.floor(Number(body.expiresInDays) * 86400) : null
+  // Logged-in owner shares are always non-expiring unless explicitly handled in future.
+  let expiresAt: number | null = null
+  if (typeof body.expiresInDays === 'number' && !Number.isNaN(body.expiresInDays) && body.expiresInDays > 0) {
+    // If in the future we want to allow owner-set expiries, uncomment next line.
+    // expiresAt = now + Math.floor(Number(body.expiresInDays) * 86400)
+    expiresAt = null
+  }
 
   const genToken = () => genTokenHex(32)
 
@@ -415,7 +421,10 @@ app.post('/api/diagrams/:id/share', async (c) => {
 
   const origin = new URL(c.req.url).origin
   const shareUrl = token ? `${origin}/s/${token}` : null
-  return c.json({ ok: true, shareUrl, token, expiresAt })
+  // load back persisted value to be authoritative
+  const after = await c.env.DB.prepare('SELECT share_expires_at FROM diagrams WHERE id = ?').bind(id).first<any>()
+  const persisted = (after?.share_expires_at as number | null) ?? null
+  return c.json({ ok: true, shareUrl, token, expiresAt: persisted })
 })
 
 // Resolve shared diagram by token (read-only)
