@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
-import Editor from '@monaco-editor/react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+
+// Monaco Editor lazy loading - only loads when code editor is shown
+const MonacoEditor = lazy(() => import('@monaco-editor/react'));
 
 // highlight.jsとESBuildを使うためのWindow拡張インターフェース
 declare global {
@@ -1284,26 +1286,35 @@ export default CounterApp;`;
         {showCode && !isMobileDevice && (
           <div className="w-1/2 border-r border-gray-200 flex flex-col">
             <div className="flex-1 p-4 bg-gray-50" style={{ height: 'calc(80vh - 100px)' }}>
-              {/* Monaco Editor */}
+              {/* Monaco Editor - lazy loaded */}
               <div className="border rounded-md overflow-hidden w-full h-full">
-                <Editor
-                  height="100%"
-                  defaultLanguage={mode === 'html' ? "html" : "javascript"}
-                  theme="vs-dark"
-                  value={code}
-                  onChange={(value) => {
-                    setCode(value || '');
-                    if (value) {
-                      compileAndSetComponent(value);
-                    }
-                  }}
-                  options={{
-                    minimap: { enabled: false },
-                    fontSize: 14,
-                    wordWrap: 'on',
-                    automaticLayout: true
-                  }}
-                />
+                <Suspense fallback={
+                  <div className="w-full h-full flex items-center justify-center bg-[#1e1e1e] text-gray-400">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-6 h-6 border-2 border-gray-500 border-t-white rounded-full animate-spin"></div>
+                      <span className="text-sm">Loading editor...</span>
+                    </div>
+                  </div>
+                }>
+                  <MonacoEditor
+                    height="100%"
+                    defaultLanguage={mode === 'html' ? "html" : "javascript"}
+                    theme="vs-dark"
+                    value={code}
+                    onChange={(value) => {
+                      setCode(value || '');
+                      if (value) {
+                        compileAndSetComponent(value);
+                      }
+                    }}
+                    options={{
+                      minimap: { enabled: false },
+                      fontSize: 14,
+                      wordWrap: 'on',
+                      automaticLayout: true
+                    }}
+                  />
+                </Suspense>
               </div>
             </div>
             <div className="p-4 border-t border-gray-200">
