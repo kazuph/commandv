@@ -529,6 +529,11 @@ app.get('/s/:token', async (c) => {
       <head>
         <meta charSet="utf-8" />
         <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" name="viewport" />
+        {/* Preconnect for faster resource loading */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://cdn.tailwindcss.com" />
+        <link rel="preconnect" href="https://unpkg.com" />
         {!allowUnfurl && <meta name="robots" content="noindex, nofollow, noarchive" />}
         {allowUnfurl && <meta name="description" content={ogDesc || ogTitle} />}
         <title>{ogTitle}</title>
@@ -550,12 +555,23 @@ app.get('/s/:token', async (c) => {
           </>
         )}
         <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMzhiZGY4IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM0ZjQ2ZTUiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0idXJsKCNncmFkKSIgcng9IjE1IiByeT0iMTUiLz4KICA8ZyBmaWxsPSIjZmZmZmZmIj4KICAgIDwhLS0gQ29tbWFuZCAo4oyWKSBzeW1ib2wgLS0+CiAgICA8cGF0aCBkPSJNMjUgMjUgSDQwIFY0MCBIMjUgWiIgLz4KICAgIDxwYXRoIGQ9Ik02MCAyNSBINzUgVjQwIEg2MCBaIiAvPgogICAgPHBhdGggZD0iTTI1IDYwIEg0MCBWNzUgSDI1IFoiIC8+CiAgICA8cGF0aCBkPSJNNjAgNjAgSDc1IFY3NSBINjAgWiIgLz4KICAgIDxwYXRoIGQ9Ik00MCA0MCBINjAgVjYwIEg0MCBaIiAvPgogIDwvZz4KPC9zdmc+" />
-        <script src="https://cdn.tailwindcss.com"></script>
-        <script>
-          {`
-          tailwind.config = { theme: { extend: {} } }
-          `}
-        </script>
+        {/* Google Fonts with display=swap (non-render-blocking) */}
+        <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" as="style" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" media="print" onLoad="this.media='all'" />
+        {/* Critical inline CSS */}
+        <style dangerouslySetInnerHTML={{__html: `
+          html, body, #root { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+          * { box-sizing: border-box; }
+        `}} />
+        {/* Tailwind CSS - defer loading */}
+        <script dangerouslySetInnerHTML={{__html: `
+          (function(){
+            var s = document.createElement('script');
+            s.src = 'https://cdn.tailwindcss.com';
+            s.onload = function() { tailwind.config = { theme: { extend: {} } }; };
+            document.head.appendChild(s);
+          })();
+        `}} />
         <link href="/static/style.css" rel="stylesheet" />
         {import.meta.env.PROD ? (
           <script type="module" src="/static/client.js"></script>
@@ -597,6 +613,12 @@ app.get('*', async (c) => {
           <meta charSet="utf-8" />
           <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" name="viewport" />
           <title>{ogTitle}</title>
+          {/* Preconnect for faster resource loading */}
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+          <link rel="preconnect" href="https://cdn.tailwindcss.com" />
+          <link rel="preconnect" href="https://unpkg.com" />
+          <link rel="dns-prefetch" href="https://d3js.org" />
           {ogImage && (
             <>
               <meta name="description" content={ogDesc || ogTitle} />
@@ -615,33 +637,28 @@ app.get('*', async (c) => {
             </>
           )}
           <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMzhiZGY4IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM0ZjQ2ZTUiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0idXJsKCNncmFkKSIgcng9IjE1IiByeT0iMTUiLz4KICA8ZyBmaWxsPSIjZmZmZmZmIj4KICAgIDwhLS0gQ29tbWFuZCAo4oyWKSBzeW1ib2wgLS0+CiAgICA8cGF0aCBkPSJNMjUgMjUgSDQwIFY0MCBIMjUgWiIgLz4KICAgIDxwYXRoIGQ9Ik02MCAyNSBINzUgVjQwIEg2MCBaIiAvPgogICAgPHBhdGggZD0iTTI1IDYwIEg0MCBWNzUgSDI1IFoiIC8+CiAgICA8cGF0aCBkPSJNNjAgNjAgSDc1IFY3NSBINjAgWiIgLz4KICAgIDxwYXRoIGQ9Ik00MCA0MCBINjAgVjYwIEg0MCBaIiAvPgogIDwvZz4KPC9zdmc+" />
+          {/* Google Fonts with display=swap (non-render-blocking) */}
+          <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" as="style" />
+          <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" media="print" onLoad="this.media='all'" />
+          <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" /></noscript>
+          {/* Critical inline CSS */}
           <style dangerouslySetInnerHTML={{__html: `
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
             html, body, #root { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
             * { box-sizing: border-box; }
-            :root {
-              color-scheme: light;
-              --app-bg: #ffffff;
-              --text-primary: #000000;
-            }
-            body {
-              font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-              -webkit-font-smoothing: antialiased;
-              -moz-osx-font-smoothing: grayscale;
-            }
+            :root { color-scheme: light; --app-bg: #ffffff; --text-primary: #000000; }
+            body { font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
           `}} />
-          {/* 公式CDNからTailwind CSS v4を読み込む */}
-          <script src="https://cdn.tailwindcss.com"></script>
-          {/* TailwindのCDN用設定 */}
-          <script>
-            {`
-            tailwind.config = {
-              theme: {
-                extend: {}
-              }
-            }
-            `}
-          </script>
+          {/* Tailwind CSS - defer loading */}
+          <script dangerouslySetInnerHTML={{__html: `
+            (function(){
+              var s = document.createElement('script');
+              s.src = 'https://cdn.tailwindcss.com';
+              s.onload = function() {
+                tailwind.config = { theme: { extend: {} } };
+              };
+              document.head.appendChild(s);
+            })();
+          `}} />
           <link href="/static/style.css" rel="stylesheet" />
           {import.meta.env.PROD ? (
             <script type="module" src="/static/client.js"></script>
