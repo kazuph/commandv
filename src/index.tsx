@@ -524,18 +524,18 @@ app.get('/s/:token', async (c) => {
   }
   const ua = c.req.header('user-agent')
   const allowUnfurl = isSocialBot(ua)
-  const html = renderToString(
-    <html style={{width: '100%', margin: 0, padding: 0}}>
+  const html = '<!DOCTYPE html>' + renderToString(
+    <html lang="en" style={{width: '100%', margin: 0, padding: 0}}>
       <head>
         <meta charSet="utf-8" />
-        <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" name="viewport" />
+        <meta content="width=device-width, initial-scale=1" name="viewport" />
         {/* Preconnect for faster resource loading */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://cdn.tailwindcss.com" />
         <link rel="preconnect" href="https://unpkg.com" />
         {!allowUnfurl && <meta name="robots" content="noindex, nofollow, noarchive" />}
-        {allowUnfurl && <meta name="description" content={ogDesc || ogTitle} />}
+        <meta name="description" content={ogDesc || ogTitle} />
         <title>{ogTitle}</title>
         {ogImage && (
           <>
@@ -607,12 +607,14 @@ app.get('*', async (c) => {
   }
 
   return c.html(
+    '<!DOCTYPE html>' +
     renderToString(
-      <html style={{width: '100%', margin: 0, padding: 0}}>
+      <html lang="en" style={{width: '100%', margin: 0, padding: 0}}>
         <head>
           <meta charSet="utf-8" />
-          <meta content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" name="viewport" />
+          <meta content="width=device-width, initial-scale=1" name="viewport" />
           <title>{ogTitle}</title>
+          <meta name="description" content={ogDesc || "Instant React component previewer. Paste code and see it render live."} />
           {/* Preconnect for faster resource loading */}
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -621,7 +623,6 @@ app.get('*', async (c) => {
           <link rel="dns-prefetch" href="https://d3js.org" />
           {ogImage && (
             <>
-              <meta name="description" content={ogDesc || ogTitle} />
               <meta property="og:title" content={ogTitle} />
               <meta property="og:type" content="website" />
               <meta property="og:image" content={ogImage} />
