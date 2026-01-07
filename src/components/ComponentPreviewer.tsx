@@ -129,35 +129,94 @@ const downloadElementAsImage = (element: HTMLElement, fileName: string, format: 
   captureElement();
 };
 
-// Add syntax highlighter script and ESBuild to head
-const addScriptsToHead = (onEsbuildReady: () => void) => {
-  // ESBuildを追加
+// Track script loading state
+let esbuildLoading = false;
+let esbuildLoaded = false;
+let d3Loading = false;
+let d3Loaded = false;
+
+// Deferred script loader using requestIdleCallback for better FCP/LCP
+const scheduleIdleTask = (callback: () => void) => {
+  if ('requestIdleCallback' in window) {
+    (window as any).requestIdleCallback(callback, { timeout: 2000 });
+  } else {
+    setTimeout(callback, 100);
+  }
+};
+
+// Load D3.js lazily (only when needed)
+const loadD3 = (): Promise<void> => {
+  if (d3Loaded || window.d3) {
+    d3Loaded = true;
+    return Promise.resolve();
+  }
+  if (d3Loading) {
+    return new Promise((resolve) => {
+      const check = setInterval(() => {
+        if (window.d3) {
+          clearInterval(check);
+          d3Loaded = true;
+          resolve();
+        }
+      }, 50);
+    });
+  }
+  d3Loading = true;
+  return new Promise((resolve) => {
+    const d3Script = document.createElement('script');
+    d3Script.src = 'https://d3js.org/d3.v7.min.js';
+    d3Script.async = true;
+    d3Script.onload = () => {
+      d3Loaded = true;
+      resolve();
+    };
+    document.head.appendChild(d3Script);
+  });
+};
+
+// Load ESBuild lazily (deferred after initial paint)
+const loadEsbuild = (onEsbuildReady: () => void) => {
+  if (esbuildLoaded && window.esbuild) {
+    onEsbuildReady();
+    return;
+  }
+  if (esbuildLoading) {
+    const check = setInterval(() => {
+      if (esbuildLoaded && window.esbuild) {
+        clearInterval(check);
+        onEsbuildReady();
+      }
+    }, 50);
+    return;
+  }
+  esbuildLoading = true;
+
   const esbuildScript = document.createElement('script');
   esbuildScript.src = 'https://unpkg.com/esbuild-wasm@0.14.54/lib/browser.min.js';
   esbuildScript.async = true;
-  
-  // D3.jsをCDNから追加
-  const d3Script = document.createElement('script');
-  d3Script.src = 'https://d3js.org/d3.v7.min.js';
-  d3Script.async = true;
-  
-  // ESBuildスクリプトの読み込み完了後に初期化を実行
+
   esbuildScript.onload = () => {
-    // ESBuildの初期化
     if (window.esbuild) {
       window.esbuild.initialize({
         wasmURL: 'https://unpkg.com/esbuild-wasm@0.14.54/esbuild.wasm'
       }).then(() => {
         console.log('ESBuild初期化完了');
-        onEsbuildReady(); // 初期化完了後のコールバック
+        esbuildLoaded = true;
+        onEsbuildReady();
       }).catch(e => {
         console.error('Failed to initialize esbuild:', e);
       });
     }
   };
 
-  document.head.appendChild(d3Script);
   document.head.appendChild(esbuildScript);
+};
+
+// Schedule ESBuild preload after initial paint (deferred loading for better FCP/LCP)
+const scheduleEsbuildPreload = (onEsbuildReady: () => void) => {
+  scheduleIdleTask(() => {
+    loadEsbuild(onEsbuildReady);
+  });
 };
 
 // Safe component execution function
@@ -167,7 +226,13 @@ const compileJSX = async (code: string): Promise<React.ComponentType> => {
     if (!window.esbuild) {
       throw new Error('ESBuild not loaded. Please try again in a moment.');
     }
-    
+
+    // Load D3.js on-demand only if code references d3
+    const usesD3 = /\bd3\b/.test(code);
+    if (usesD3 && !window.d3) {
+      await loadD3();
+    }
+
     // Add libraries to scope
     const scope: Record<string, any> = {
       React,
@@ -183,7 +248,7 @@ const compileJSX = async (code: string): Promise<React.ComponentType> => {
       lucideReact,
       _,
       Papa,
-      // D3.js
+      // D3.js (loaded on-demand)
       d3: window.d3,
       // React Icons（必要なものだけを追加）
       FaGithub,
@@ -842,20 +907,21 @@ export default CounterApp;`;
     }
   };
 
-  // Load ESBuild when component mounts
+  // Load ESBuild when component mounts (deferred for better FCP/LCP)
   useEffect(() => {
     // ESBuild初期化完了時のコールバック
     const handleEsbuildReady = () => {
       setEsbuildReady(true);
-      
+
       // 初期化待ちのコードがあれば処理する
       if (pendingCode) {
         compileAndSetComponent(pendingCode);
         setPendingCode(null);
       }
     };
-    
-    addScriptsToHead(handleEsbuildReady);
+
+    // Schedule ESBuild loading after initial paint for better FCP/LCP
+    scheduleEsbuildPreload(handleEsbuildReady);
   }, [pendingCode]);
 
   // Download preview as image with improved styling

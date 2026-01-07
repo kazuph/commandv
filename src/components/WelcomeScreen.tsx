@@ -37,7 +37,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onLoadSample, belowCta })
           {belowCta}
         </div>
       )}
-      <div className="mt-8 text-xs text-gray-400">
+      <div className="mt-8 text-xs text-gray-500">
         Paste your component code anywhere to preview
       </div>
     </div>
