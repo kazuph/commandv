@@ -278,7 +278,7 @@ app.post('/api/diagrams', async (c) => {
   if (!user) {
     return c.json({ ok: false, login: true, loginUrl: '/auth/google/login' }, 401)
   }
-  const body = await c.req.json<{ title?: string; description?: string; code: string; mode: 'html'|'jsx'; isPrivate?: boolean; imageDataUrl?: string }>()
+  const body = await c.req.json<{ title?: string; description?: string; code: string; mode: 'html'|'jsx'|'markdown'; isPrivate?: boolean; imageDataUrl?: string }>()
   const id = crypto.randomUUID()
   const title = body.title || 'Untitled Diagram'
   const isPrivate = body.isPrivate ?? true
@@ -308,8 +308,8 @@ app.post('/api/diagrams/guest', async (c) => {
   const okDay = await checkRate(c, 'guest:create:day', 100, 86400)
   if (!okMin || !okDay) return c.text('Too Many Requests', 429)
 
-  const body = await c.req.json<{ title?: string; description?: string; code: string; mode: 'html'|'jsx'; imageDataUrl?: string }>().catch(() => null)
-  if (!body || typeof body.code !== 'string' || (body.mode !== 'html' && body.mode !== 'jsx')) return c.text('Bad Request', 400)
+  const body = await c.req.json<{ title?: string; description?: string; code: string; mode: 'html'|'jsx'|'markdown'; imageDataUrl?: string }>().catch(() => null)
+  if (!body || typeof body.code !== 'string' || (body.mode !== 'html' && body.mode !== 'jsx' && body.mode !== 'markdown')) return c.text('Bad Request', 400)
   if (body.code.length > 200_000) return c.text('Payload Too Large', 413)
 
   const id = crypto.randomUUID()

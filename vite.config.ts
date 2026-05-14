@@ -8,7 +8,9 @@ export default defineConfig(({ mode }) => {
   // 共通設定
   const serverConfig = {
     server: {
-      port: 3000, // デフォルトの5173から3000に変更
+      allowedHosts: ['.ts.net', 'localhost', '127.0.0.1'],
+      port: 3000,
+      host: '0.0.0.0',
     }
   };
 

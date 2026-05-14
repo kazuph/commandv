@@ -14,8 +14,8 @@ const AppleLogo: React.FC = () => {
       {/* ⌘V for CommandV */}
       <span className="relative font-bold text-lg text-white">⌘V</span>
       
-      {/* Animated pulse effect */}
-      <div className="absolute inset-0 rounded-full bg-white opacity-20 animate-ping"></div>
+      {/* Subtle static glow */}
+      <div className="absolute inset-0 rounded-full bg-white opacity-10"></div>
     </div>
   );
 };

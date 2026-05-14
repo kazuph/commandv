@@ -58,6 +58,7 @@ import SampleCounter from './SampleCounter';
 import RecentDiagramStrip from './RecentDiagramStrip';
 import UserMenu from './UserMenu';
 import ShareDialog from './ShareDialog';
+import MarkdownPreview from './MarkdownPreview';
 
 // Function to convert SVG to data URL for download
 const svgToDataURL = (svgElement: SVGElement): string => {
@@ -436,7 +437,7 @@ const ComponentPreviewer: React.FC = () => {
   const [component, setComponent] = useState<React.ComponentType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showCode, setShowCode] = useState<boolean>(false); // Default to closed
-  const [mode, setMode] = useState<'react' | 'html'>('react'); // モード：ReactコードかHTMLか
+  const [mode, setMode] = useState<'react' | 'html' | 'markdown'>('react'); // モード：ReactコードかHTMLかMarkdownか
   const [esbuildReady, setEsbuildReady] = useState<boolean>(false); // ESBuildの初期化状態
   const [pendingCode, setPendingCode] = useState<string | null>(null); // 初期化待ちのコード
   const previewRef = useRef<HTMLDivElement>(null);
@@ -519,6 +520,12 @@ const ComponentPreviewer: React.FC = () => {
   // 画像生成（モード別）
   const capturePreview = async (): Promise<string | undefined> => {
     try {
+      if (mode === 'markdown' && previewRef.current) {
+        const node = previewRef.current;
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const dataUrl = await htmlToImage.toPng(node, { pixelRatio: dpr, backgroundColor: '#ffffff' });
+        return dataUrl;
+      }
       if (mode === 'html' && htmlPreviewRef.current) {
         const iframe = htmlPreviewRef.current;
         const iframeDoc = iframe.contentDocument;
@@ -577,6 +584,15 @@ const ComponentPreviewer: React.FC = () => {
     return null
   }
 
+  // Markdown からデフォルトタイトルを抽出（先頭の h1）
+  const extractMarkdownTitle = (md: string): string | null => {
+    try {
+      const match = md.match(/^#\s+(.+)$/m)
+      if (match) return match[1].trim()
+    } catch {}
+    return null
+  }
+
   // Save API 呼び出し
   const handleSaveDiagram = async () => {
     const me = await ensureLogin();
@@ -586,6 +602,9 @@ const ComponentPreviewer: React.FC = () => {
     let defaultTitle = `Diagram ${now.toLocaleString()}`
     if (mode === 'html') {
       const found = extractHtmlTitle(code)
+      if (found) defaultTitle = found
+    } else if (mode === 'markdown') {
+      const found = extractMarkdownTitle(code)
       if (found) defaultTitle = found
     }
     // ユーザーに確認
@@ -603,6 +622,11 @@ const ComponentPreviewer: React.FC = () => {
         const firstP = doc.querySelector('p')?.textContent?.trim() || ''
         defaultDesc = (metaDesc || firstP || '').slice(0, 300)
       } catch {}
+    } else if (mode === 'markdown') {
+      try {
+        const firstTextLine = code.split('\n').find(l => l.trim() && !l.trim().startsWith('#') && !l.trim().startsWith('```') && !l.trim().startsWith('>') && !l.trim().startsWith('|') && !l.trim().startsWith('-') && !l.trim().startsWith('*'))
+        if (firstTextLine) defaultDesc = firstTextLine.trim().slice(0, 300)
+      } catch {}
     }
     const inputDesc = window.prompt('説明（SlackやSNSのプレビューに表示されます。省略可）', defaultDesc)
     const description = (inputDesc || '').trim().slice(0, 300) || undefined
@@ -610,7 +634,7 @@ const ComponentPreviewer: React.FC = () => {
     const payload = {
       title,
       code,
-      mode: mode === 'react' ? 'jsx' : 'html',
+      mode: mode === 'react' ? 'jsx' : mode === 'markdown' ? 'markdown' : 'html',
       isPrivate: true,
       description,
       imageDataUrl: dataUrl
@@ -643,6 +667,9 @@ const ComponentPreviewer: React.FC = () => {
     if (mode === 'html') {
       const found = extractHtmlTitle(code)
       if (found) defaultTitle = found
+    } else if (mode === 'markdown') {
+      const found = extractMarkdownTitle(code)
+      if (found) defaultTitle = found
     }
     const input = window.prompt('共有用タイトル（省略可）', defaultTitle)
     if (input === null) return
@@ -658,13 +685,18 @@ const ComponentPreviewer: React.FC = () => {
         const firstP = doc.querySelector('p')?.textContent?.trim() || ''
         defaultDesc = (metaDesc || firstP || '').slice(0, 300)
       } catch {}
+    } else if (mode === 'markdown') {
+      try {
+        const firstTextLine = code.split('\n').find(l => l.trim() && !l.trim().startsWith('#') && !l.trim().startsWith('```') && !l.trim().startsWith('>') && !l.trim().startsWith('|') && !l.trim().startsWith('-') && !l.trim().startsWith('*'))
+        if (firstTextLine) defaultDesc = firstTextLine.trim().slice(0, 300)
+      } catch {}
     }
     const inputDesc = window.prompt('説明（SlackやSNSのプレビューに表示されます。省略可）', defaultDesc)
     const description = (inputDesc || '').trim().slice(0, 300) || undefined
     try {
       const res = await fetch('/api/diagrams/guest', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, code, mode: mode === 'react' ? 'jsx' : 'html', imageDataUrl: dataUrl })
+        body: JSON.stringify({ title, description, code, mode: mode === 'react' ? 'jsx' : mode === 'markdown' ? 'markdown' : 'html', imageDataUrl: dataUrl })
       })
       if (!res.ok) { showToast('error', 'クイック共有に失敗しました'); return }
       const j = await res.json()
@@ -776,10 +808,51 @@ export default CounterApp;`;
 </body>
 </html>`;
 
+  // Markdown用のサンプルコード
+  const sampleMarkdownCode = `# Markdown サンプル
+
+これは**マークダウン**のサンプルです。
+
+## 数式
+
+インライン数式: $E = mc^2$
+
+ディスプレイ数式:
+$$\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}$$
+
+## Mermaid ダイアグラム
+
+\`\`\`mermaid
+graph TD
+    A[開始] --> B{判定}
+    B -->|Yes| C[処理1]
+    B -->|No| D[処理2]
+    C --> E[終了]
+    D --> E
+\`\`\`
+
+## テーブル
+
+| 名前 | 年齢 | 役職 |
+|------|------|------|
+| 田中 | 30   | 開発 |
+| 山田 | 25   | デザイン |
+
+## リスト
+
+- アイテム1
+- アイテム2
+  - ネスト1
+  - ネスト2
+
+> 引用ブロック
+> これは引用です。
+`;
+
   // サンプルコードを読み込む
   const loadSample = () => {
     // 現在のモードに基づいてサンプルを選択
-    const sampleToLoad = mode === 'html' ? sampleHtmlCode : sampleCode;
+    const sampleToLoad = mode === 'html' ? sampleHtmlCode : mode === 'markdown' ? sampleMarkdownCode : sampleCode;
     setCode(sampleToLoad);
     
     // 自動判定も実行
@@ -815,8 +888,23 @@ export default CounterApp;`;
     };
   }, [mode]); // modeが変わったときにも適用されるようにする
 
-  // HTMLかReactかを判定する関数
-  const detectCodeType = (code: string): 'react' | 'html' => {
+  // HTMLかReactかMarkdownかを判定する関数
+  const detectCodeType = (code: string): 'react' | 'html' | 'markdown' => {
+    // Markdownの特徴を検出
+    const markdownFeatures = [
+      /^#{1,6}\s/m.test(code),
+      /```[\s\S]*?```/.test(code),
+      /\*\*.*?\*\*/.test(code),
+      /\[.*?\]\(.*?\)/.test(code),
+      /^\s*[-*+]\s/m.test(code),
+      /^\s*\d+\.\s/m.test(code),
+      /> .*/m.test(code),
+      /\|.*\|.*\|/.test(code),
+      /\$.*?\$/.test(code),
+      /^\s*```mermaid/m.test(code),
+    ];
+    const mdFeatureCount = markdownFeatures.filter(Boolean).length;
+    
     // HTMLの特徴を検出
     const htmlFeatures = [
       /<!DOCTYPE\s+html>/i.test(code),
@@ -838,7 +926,10 @@ export default CounterApp;`;
     const htmlFeatureCount = htmlFeatures.filter(Boolean).length;
     const reactFeatureCount = reactFeatures.filter(Boolean).length;
     
-    // より多くの特徴がある方を選択
+    // Markdown特徴が2つ以上あれば優先（Mermaidブロックや数式がある場合も含む）
+    if (mdFeatureCount >= 2) return 'markdown';
+    
+    // それ以外は従来通り
     return htmlFeatureCount > reactFeatureCount ? 'html' : 'react';
   };
 
@@ -895,6 +986,13 @@ export default CounterApp;`;
       setComponent(null);
       setError(null);
       // HTMLプレビューの更新はレンダリング時に行う
+      return;
+    }
+    
+    if (detectedMode === 'markdown') {
+      // Markdownモードではコンパイル不要（MarkdownPreviewが直接レンダリング）
+      setComponent(null);
+      setError(null);
       return;
     }
     
@@ -1106,8 +1204,8 @@ export default CounterApp;`;
         const res = await fetch(`/api/diagrams/${id}`)
         if (!res.ok) return
         const row = await res.json()
-        const serverMode = (row.mode as string) === 'jsx' ? 'react' : 'html'
-        setMode(serverMode as 'react' | 'html')
+        const serverMode = (row.mode as string) === 'jsx' ? 'react' : (row.mode as string) === 'markdown' ? 'markdown' : 'html'
+        setMode(serverMode as 'react' | 'html' | 'markdown')
         setCode(row.code as string)
         setCurrentId(id)
         setCurrentTitle((row.title as string) || null)
@@ -1133,8 +1231,8 @@ export default CounterApp;`;
         if (res.status === 401) { setShareExpired(true); return }
         if (!res.ok) return
         const row = await res.json()
-        const serverMode = (row.mode as string) === 'jsx' ? 'react' : 'html'
-        setMode(serverMode as 'react' | 'html')
+        const serverMode = (row.mode as string) === 'jsx' ? 'react' : (row.mode as string) === 'markdown' ? 'markdown' : 'html'
+        setMode(serverMode as 'react' | 'html' | 'markdown')
         setCode(row.code as string)
         setCurrentId(row.id as string)
         setCurrentTitle((row.title as string) || null)
@@ -1298,7 +1396,7 @@ export default CounterApp;`;
                 }>
                   <MonacoEditor
                     height="100%"
-                    defaultLanguage={mode === 'html' ? "html" : "javascript"}
+                    defaultLanguage={mode === 'html' ? 'html' : mode === 'markdown' ? 'markdown' : 'javascript'}
                     theme="vs-dark"
                     value={code}
                     onChange={(value) => {
@@ -1503,6 +1601,21 @@ export default CounterApp;`;
                 ></iframe>
               ) : (
                 <div className="h-full" />
+              )}
+            </div>
+          ) : mode === 'markdown' ? (
+            // Markdownモードのプレビュー
+            <div
+              ref={previewRef}
+              className="flex-1 flex items-start justify-center p-8 pt-12 overflow-auto bg-gray-50"
+              style={{ height: 'calc(80vh - 100px)' }}
+            >
+              {code ? (
+                <div className="w-full max-w-4xl">
+                  <MarkdownPreview content={code} />
+                </div>
+              ) : (
+                <WelcomeScreen onLoadSample={loadSample} belowCta={<RecentDiagramStrip />} />
               )}
             </div>
           ) : (
