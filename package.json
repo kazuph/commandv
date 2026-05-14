@@ -26,29 +26,29 @@
     "deploy": "$npm_execpath run build && wrangler deploy server-build/index.js"
   },
   "dependencies": {
-    "@babel/standalone": "^7.27.2",
+    "@babel/standalone": "^7.29.4",
     "@monaco-editor/react": "^4.7.0",
-    "hono": "^4.7.10",
+    "hono": "^4.12.18",
     "html-to-image": "^1.11.13",
-    "lodash": "^4.17.21",
+    "lodash": "^4.18.1",
     "lucide-react": "^0.487.0",
-    "papaparse": "^5.5.2",
+    "papaparse": "^5.5.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-icons": "^5.5.0",
-    "recharts": "^2.15.3"
+    "react-icons": "^5.6.0",
+    "recharts": "^2.15.4"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20250519.0",
-    "@hono/vite-build": "^1.6.1",
+    "@cloudflare/workers-types": "^4.20260507.1",
+    "@hono/vite-build": "^1.11.1",
     "@hono/vite-dev-server": "^0.16.0",
-    "@types/lodash": "^4.17.16",
-    "@types/papaparse": "^5.3.16",
-    "@types/react": "^18.3.21",
+    "@types/lodash": "^4.17.24",
+    "@types/papaparse": "^5.5.2",
+    "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.3",
-    "vite": "^5.4.19",
-    "wrangler": "^4.15.2"
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.14",
+    "vite": "^5.4.21",
+    "wrangler": "^4.88.0"
   }
 }
