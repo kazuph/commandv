@@ -35,7 +35,6 @@ const UserMenu: React.FC<{ compact?: boolean }>= ({ compact = false }) => {
         title="Sign in with Google"
       >
         <FcGoogle size={20} />
-        {/* <span className="sr-only">Googleでログイン</span> */}
       </a>
     )
   }
@@ -44,7 +43,6 @@ const UserMenu: React.FC<{ compact?: boolean }>= ({ compact = false }) => {
     try {
       await fetch('/auth/logout', { method: 'POST' })
     } catch {}
-    // フルリロードで状態クリア
     window.location.href = '/'
   }
 

@@ -26,7 +26,7 @@ type SessionUser = {
   picture?: string
 }
 
-// Minimal HMAC(sHA-256) signer/validator for cookie sessions
+// Minimal HMAC( SHA-256) signer/validator for cookie sessions
 async function hmacSign(secret: string, payload: string) {
   const key = await crypto.subtle.importKey(
     'raw',
@@ -40,13 +40,11 @@ async function hmacSign(secret: string, payload: string) {
 }
 
 async function setSession(c: any, secret: string, user: SessionUser) {
-  // UTF-8 safe base64 for cookie payload
   const utf8 = new TextEncoder().encode(JSON.stringify(user))
   const payload = btoa(String.fromCharCode(...utf8))
   const sig = await hmacSign(secret, payload)
   const url = new URL(c.req.url)
   const isLocal = url.hostname === 'localhost' || url.hostname === '127.0.0.1'
-  // cookie値は明示的にencodeしない（hono側で適切に処理）
   setCookie(c, 'session', `${payload}.${sig}`, {
     path: '/',
     httpOnly: true,
@@ -77,7 +75,6 @@ function decodeJwtPayload(idToken: string): any {
   const parts = idToken.split('.')
   if (parts.length < 2) throw new Error('Invalid JWT')
   let b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
-  // pad to length multiple of 4
   if (b64.length % 4) b64 += '='.repeat(4 - (b64.length % 4))
   const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
   const json = new TextDecoder().decode(bytes)
@@ -91,7 +88,10 @@ app.use('*', poweredBy())
 
 // Attach user to context if logged in
 app.use('*', async (c, next) => {
-  const secret = c.env.SESSION_SECRET || c.env.MY_VAR
+  const secret = c.env.SESSION_SECRET
+  if (!secret) {
+    return c.text('Server misconfigured: SESSION_SECRET not set', 500)
+  }
   const user = await getSession(c, secret)
   c.set('user', user)
   return next()
@@ -99,7 +99,7 @@ app.use('*', async (c, next) => {
 
 app.get('/api/clock', (c) => {
   return c.json({
-    var: c.env.MY_VAR, // Cloudflare Bindings
+    var: c.env.MY_VAR,
     time: new Date().toLocaleTimeString()
   })
 })
@@ -123,7 +123,7 @@ function genTokenHex(bytes = 32): string {
 
 async function checkRate(c: any, bucket: string, limit: number, windowSec: number): Promise<boolean> {
   const now = Math.floor(Date.now()/1000)
-  const secret = c.env.SESSION_SECRET || c.env.MY_VAR
+  const secret = c.env.SESSION_SECRET
   const ip = getClientIP(c)
   const keyHash = await hmacHex(secret, `${bucket}:${ip}:${windowSec}`)
   const row = await c.env.DB.prepare('SELECT count, reset_at FROM rate_limits WHERE key = ?').bind(keyHash).first<any>()
@@ -138,10 +138,19 @@ async function checkRate(c: any, bucket: string, limit: number, windowSec: numbe
   return true
 }
 
-// OAuth: Google
+// OAuth: Google — generate state for CSRF protection
 app.get('/auth/google/login', (c) => {
   const clientId = c.env.GOOGLE_CLIENT_ID
   const redirectUri = c.env.GOOGLE_REDIRECT_URI || new URL('/auth/google/callback', c.req.url).toString()
+  const state = genTokenHex(32)
+  // store state in a short-lived cookie for callback verification
+  setCookie(c, 'oauth_state', state, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'Lax',
+    secure: false,
+    maxAge: 600 // 10 minutes
+  })
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
@@ -149,7 +158,8 @@ app.get('/auth/google/login', (c) => {
     scope: 'openid email profile',
     access_type: 'online',
     include_granted_scopes: 'true',
-    prompt: 'select_account'
+    prompt: 'select_account',
+    state
   })
   return c.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`)
 })
@@ -169,7 +179,16 @@ app.get('/auth/google/config', (c) => {
 app.get('/auth/google/callback', async (c) => {
   const url = new URL(c.req.url)
   const code = url.searchParams.get('code')
+  const state = url.searchParams.get('state')
   if (!code) return c.text('Missing code', 400)
+
+  // Verify state parameter (CSRF protection)
+  const savedState = getCookie(c, 'oauth_state')
+  if (!state || !savedState || state !== savedState) {
+    return c.text('Invalid state parameter — possible CSRF attack', 400)
+  }
+  // Clear state cookie immediately
+  deleteCookie(c, 'oauth_state', { path: '/' })
 
   const redirectUri = c.env.GOOGLE_REDIRECT_URI || new URL('/auth/google/callback', c.req.url).toString()
   const body = new URLSearchParams({
@@ -191,7 +210,7 @@ app.get('/auth/google/callback', async (c) => {
   let payload: any
   try {
     payload = decodeJwtPayload(idToken)
-  } catch (e) {
+  } catch {
     return c.text('Invalid id_token payload', 500)
   }
   const sub = payload.sub as string
@@ -205,11 +224,11 @@ app.get('/auth/google/callback', async (c) => {
      ON CONFLICT(id) DO UPDATE SET email=excluded.email, name=excluded.name, picture=excluded.picture`
   ).bind(sub, email, name, picture).run()
 
-  await setSession(c, c.env.SESSION_SECRET || c.env.MY_VAR, {
+  await setSession(c, c.env.SESSION_SECRET, {
     id: sub, provider: 'google', email, name, picture
   })
 
-  // 302 経由で Set-Cookie が落ちるケースに対応し、200で自前リダイレクト
+  // 302 redirect with JS fallback for Set-Cookie edge cases
   return c.html(
     `<!doctype html><meta charset="utf-8" />
      <title>Signed in</title>
@@ -231,7 +250,7 @@ app.get('/auth/me', (c) => {
 // Debug helper: shows cookies seen by server
 app.get('/auth/debug', async (c) => {
   const raw = getCookie(c, 'session')
-  const secret = c.env.SESSION_SECRET || c.env.MY_VAR
+  const secret = c.env.SESSION_SECRET
   let info: any = { raw }
   if (raw) {
     const [payload, sig] = raw.split('.')
@@ -340,7 +359,6 @@ app.post('/api/diagrams/guest', async (c) => {
   }
 
   const origin = new URL(c.req.url).origin
-  // fetch token back
   const row = await c.env.DB.prepare('SELECT share_token, share_expires_at FROM diagrams WHERE id = ?').bind(id).first<any>()
   const token = row?.share_token as string
   const shareUrl = `${origin}/s/${token}`
@@ -354,16 +372,14 @@ app.delete('/api/diagrams/:id', async (c) => {
   const row = await c.env.DB.prepare('SELECT user_id, image_key FROM diagrams WHERE id = ?').bind(id).first<any>()
   if (!row) return c.text('Not found', 404)
   if (row.user_id !== user.id) return c.text('Forbidden', 403)
-  // delete DB first
   await c.env.DB.prepare('DELETE FROM diagrams WHERE id = ?').bind(id).run()
-  // best-effort delete from R2
   if (row.image_key) {
     try { await c.env.R2.delete(row.image_key as string) } catch {}
   }
   return c.json({ ok: true })
 })
 
-// Update diagram metadata (e.g., title)
+// Update diagram metadata
 app.patch('/api/diagrams/:id', async (c) => {
   const user = c.get('user')
   if (!user) return c.text('Unauthorized', 401)
@@ -396,32 +412,20 @@ app.post('/api/diagrams/:id/share', async (c) => {
   if (!row) return c.text('Not found', 404)
   if (row.user_id !== user.id) return c.text('Forbidden', 403)
 
-  const now = Math.floor(Date.now() / 1000)
-  // Logged-in owner shares are always non-expiring unless explicitly handled in future.
-  let expiresAt: number | null = null
-  if (typeof body.expiresInDays === 'number' && !Number.isNaN(body.expiresInDays) && body.expiresInDays > 0) {
-    // If in the future we want to allow owner-set expiries, uncomment next line.
-    // expiresAt = now + Math.floor(Number(body.expiresInDays) * 86400)
-    expiresAt = null
-  }
-
   const genToken = () => genTokenHex(32)
-
   let token = (row.share_token as string) || null
   if (body.action === 'disable') {
     await c.env.DB.prepare(`UPDATE diagrams SET share_enabled = 0, updated_at = strftime('%s','now') WHERE id = ?`).bind(id).run()
   } else if (body.action === 'rotate') {
     token = genToken()
-    await c.env.DB.prepare(`UPDATE diagrams SET share_enabled = 1, share_token = ?, share_expires_at = ?, updated_at = strftime('%s','now') WHERE id = ?`).bind(token, expiresAt, id).run()
+    await c.env.DB.prepare(`UPDATE diagrams SET share_enabled = 1, share_token = ?, share_expires_at = NULL, updated_at = strftime('%s','now') WHERE id = ?`).bind(token, id).run()
   } else {
-    // enable
     token = token || genToken()
-    await c.env.DB.prepare(`UPDATE diagrams SET share_enabled = 1, share_token = ?, share_expires_at = ?, updated_at = strftime('%s','now') WHERE id = ?`).bind(token, expiresAt, id).run()
+    await c.env.DB.prepare(`UPDATE diagrams SET share_enabled = 1, share_token = ?, share_expires_at = NULL, updated_at = strftime('%s','now') WHERE id = ?`).bind(token, id).run()
   }
 
   const origin = new URL(c.req.url).origin
   const shareUrl = token ? `${origin}/s/${token}` : null
-  // load back persisted value to be authoritative
   const after = await c.env.DB.prepare('SELECT share_expires_at FROM diagrams WHERE id = ?').bind(id).first<any>()
   const persisted = (after?.share_expires_at as number | null) ?? null
   return c.json({ ok: true, shareUrl, token, expiresAt: persisted })
@@ -431,7 +435,6 @@ app.post('/api/diagrams/:id/share', async (c) => {
 app.get('/api/share/:token', async (c) => {
   const token = c.req.param('token')
   if (!token || token.length < 32) return c.text('Not found', 404)
-  // First try as active share (not expired)
   const active = await c.env.DB.prepare(
     `SELECT id, title, mode, code, image_key, created_at, updated_at FROM diagrams
      WHERE share_enabled = 1 AND share_token = ? AND (share_expires_at IS NULL OR share_expires_at > strftime('%s','now'))`
@@ -442,7 +445,6 @@ app.get('/api/share/:token', async (c) => {
       'X-Robots-Tag': 'noindex, nofollow, noarchive'
     })
   }
-  // If expired, require login but allow viewing by any logged-in user
   const user = c.get('user')
   if (!user) return c.json({ ok: false, login: true, loginUrl: '/auth/google/login', reason: 'expired' }, 401)
   const row = await c.env.DB.prepare(
@@ -453,7 +455,7 @@ app.get('/api/share/:token', async (c) => {
   return c.json(row, 200, { 'Cache-Control': 'private, max-age=0, no-store', 'X-Robots-Tag': 'noindex, nofollow, noarchive' })
 })
 
-// OGP image serving: /og/:id -> fetch from R2 (DB lookup)
+// OGP image serving
 app.get('/og/:id', async (c) => {
   const id = c.req.param('id')
   const row = await c.env.DB.prepare(
@@ -461,7 +463,6 @@ app.get('/og/:id', async (c) => {
   ).bind(id).first<any>()
   if (!row) return c.text('Not found', 404)
   if (row.is_private) {
-    // Allow if sharing is currently enabled and not expired
     const nowOk = !row.share_expires_at || (row.share_expires_at as number) > Math.floor(Date.now()/1000)
     const shareOk = (row.share_enabled as number) === 1 && nowOk
     if (!shareOk) {
@@ -481,14 +482,13 @@ app.get('/og/:id', async (c) => {
   })
 })
 
-// robots.txt: disallow shared paths so crawlers politely skip
+// robots.txt
 app.get('/robots.txt', (c) => {
-  // Permit Slackbot (and other common unfurlers) while disallowing generic crawlers
   const body = `User-agent: *\nDisallow: /s/\n\nUser-agent: Slackbot\nAllow: /s/\nUser-agent: Twitterbot\nAllow: /s/\nUser-agent: Facebot\nAllow: /s/\nUser-agent: facebookexternalhit\nAllow: /s/\nUser-agent: LinkedInBot\nAllow: /s/\nUser-agent: Discordbot\nAllow: /s/\n`
   return c.text(body, 200, { 'Content-Type': 'text/plain; charset=utf-8' })
 })
 
-// Shared view page: /s/:token with noindex headers
+// Shared view page: /s/:token
 function isSocialBot(ua: string | null | undefined): boolean {
   if (!ua) return false
   ua = ua.toLowerCase()
@@ -505,18 +505,15 @@ function isSocialBot(ua: string | null | undefined): boolean {
 
 app.get('/s/:token', async (c) => {
   const token = c.req.param('token')
-  // Lookup minimal info for OGP (optional)
   let ogTitle = 'Shared Diagram'
   let ogImage: string | undefined
   let ogDesc: string | undefined
-  let id: string | undefined
   let ogUrl = new URL(c.req.url).toString()
   if (token && token.length >= 32) {
     const row = await c.env.DB.prepare(
       `SELECT id, title, description FROM diagrams WHERE share_enabled = 1 AND share_token = ? AND (share_expires_at IS NULL OR share_expires_at > strftime('%s','now'))`
     ).bind(token).first<any>()
     if (row) {
-      id = row.id as string
       ogTitle = row.title || ogTitle
       ogDesc = row.description || undefined
       ogImage = new URL(`/og/${row.id}`, c.req.url).toString()
@@ -529,7 +526,6 @@ app.get('/s/:token', async (c) => {
       <head>
         <meta charSet="utf-8" />
         <meta content="width=device-width, initial-scale=1" name="viewport" />
-        {/* Preconnect for faster resource loading */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://cdn.tailwindcss.com" />
@@ -555,15 +551,12 @@ app.get('/s/:token', async (c) => {
           </>
         )}
         <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMzhiZGY4IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM0ZjQ2ZTUiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0idXJsKCNncmFkKSIgcng9IjE1IiByeT0iMTUiLz4KICA8ZyBmaWxsPSIjZmZmZmZmIj4KICAgIDwhLS0gQ29tbWFuZCAo4oyWKSBzeW1ib2wgLS0+CiAgICA8cGF0aCBkPSJNMjUgMjUgSDQwIFY0MCBIMjUgWiIgLz4KICAgIDxwYXRoIGQ9Ik02MCAyNSBINzUgVjQwIEg2MCBaIiAvPgogICAgPHBhdGggZD0iTTI1IDYwIEg0MCBWNzUgSDI1IFoiIC8+CiAgICA8cGF0aCBkPSJNNjAgNjAgSDc1IFY3NSBINjAgWiIgLz4KICAgIDxwYXRoIGQ9Ik00MCA0MCBINjAgVjYwIEg0MCBaIiAvPgogIDwvZz4KPC9zdmc+" />
-        {/* Google Fonts with display=swap (non-render-blocking) */}
         <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" as="style" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" media="print" onLoad="this.media='all'" />
-        {/* Critical inline CSS */}
         <style dangerouslySetInnerHTML={{__html: `
           html, body, #root { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
           * { box-sizing: border-box; }
         `}} />
-        {/* Tailwind CSS - defer loading */}
         <script dangerouslySetInnerHTML={{__html: `
           (function(){
             var s = document.createElement('script');
@@ -590,7 +583,6 @@ app.get('/s/:token', async (c) => {
 })
 
 app.get('*', async (c) => {
-  // Build OGP tags if path is /d/:id
   const u = new URL(c.req.url)
   const match = u.pathname.match(/^\/d\/([a-z0-9\-]+)$/i)
   let ogTitle = 'CommandV'
@@ -615,7 +607,6 @@ app.get('*', async (c) => {
           <meta content="width=device-width, initial-scale=1" name="viewport" />
           <title>{ogTitle}</title>
           <meta name="description" content={ogDesc || "Instant React component previewer. Paste code and see it render live."} />
-          {/* Preconnect for faster resource loading */}
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
           <link rel="preconnect" href="https://cdn.tailwindcss.com" />
@@ -638,25 +629,20 @@ app.get('*', async (c) => {
             </>
           )}
           <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImdyYWQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMzhiZGY4IiAvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM0ZjQ2ZTUiIC8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0idXJsKCNncmFkKSIgcng9IjE1IiByeT0iMTUiLz4KICA8ZyBmaWxsPSIjZmZmZmZmIj4KICAgIDwhLS0gQ29tbWFuZCAo4oyWKSBzeW1ib2wgLS0+CiAgICA8cGF0aCBkPSJNMjUgMjUgSDQwIFY0MCBIMjUgWiIgLz4KICAgIDxwYXRoIGQ9Ik02MCAyNSBINzUgVjQwIEg2MCBaIiAvPgogICAgPHBhdGggZD0iTTI1IDYwIEg0MCBWNzUgSDI1IFoiIC8+CiAgICA8cGF0aCBkPSJNNjAgNjAgSDc1IFY3NSBINjAgWiIgLz4KICAgIDxwYXRoIGQ9Ik00MCA0MCBINjAgVjYwIEg0MCBaIiAvPgogIDwvZz4KPC9zdmc+" />
-          {/* Google Fonts with display=swap (non-render-blocking) */}
           <link rel="preload" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" as="style" />
           <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" media="print" onLoad="this.media='all'" />
           <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" /></noscript>
-          {/* Critical inline CSS */}
           <style dangerouslySetInnerHTML={{__html: `
             html, body, #root { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
             * { box-sizing: border-box; }
             :root { color-scheme: light; --app-bg: #ffffff; --text-primary: #000000; }
             body { font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11'; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
           `}} />
-          {/* Tailwind CSS - defer loading */}
           <script dangerouslySetInnerHTML={{__html: `
             (function(){
               var s = document.createElement('script');
               s.src = 'https://cdn.tailwindcss.com';
-              s.onload = function() {
-                tailwind.config = { theme: { extend: {} } };
-              };
+              s.onload = function() { tailwind.config = { theme: { extend: {} } }; };
               document.head.appendChild(s);
             })();
           `}} />

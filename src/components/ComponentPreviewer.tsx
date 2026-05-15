@@ -659,53 +659,9 @@ const ComponentPreviewer: React.FC = () => {
     }
   }
 
-  // Anonymous quick share (no login, 3-day expiry)
+  // Anonymous quick share (no login, 3-day expiry) — disabled behind Access
   const handleQuickShare = async () => {
-    // default title
-    const now = new Date()
-    let defaultTitle = `Diagram ${now.toLocaleString()}`
-    if (mode === 'html') {
-      const found = extractHtmlTitle(code)
-      if (found) defaultTitle = found
-    } else if (mode === 'markdown') {
-      const found = extractMarkdownTitle(code)
-      if (found) defaultTitle = found
-    }
-    const input = window.prompt('共有用タイトル（省略可）', defaultTitle)
-    if (input === null) return
-    const title = (input.trim() || defaultTitle).slice(0, 200)
-    const dataUrl = await capturePreview()
-    // 説明のデフォルト抽出
-    let defaultDesc = ''
-    if (mode === 'html') {
-      try {
-        const parser = new DOMParser()
-        const doc = parser.parseFromString(code, 'text/html')
-        const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content') || ''
-        const firstP = doc.querySelector('p')?.textContent?.trim() || ''
-        defaultDesc = (metaDesc || firstP || '').slice(0, 300)
-      } catch {}
-    } else if (mode === 'markdown') {
-      try {
-        const firstTextLine = code.split('\n').find(l => l.trim() && !l.trim().startsWith('#') && !l.trim().startsWith('```') && !l.trim().startsWith('>') && !l.trim().startsWith('|') && !l.trim().startsWith('-') && !l.trim().startsWith('*'))
-        if (firstTextLine) defaultDesc = firstTextLine.trim().slice(0, 300)
-      } catch {}
-    }
-    const inputDesc = window.prompt('説明（SlackやSNSのプレビューに表示されます。省略可）', defaultDesc)
-    const description = (inputDesc || '').trim().slice(0, 300) || undefined
-    try {
-      const res = await fetch('/api/diagrams/guest', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, code, mode: mode === 'react' ? 'jsx' : mode === 'markdown' ? 'markdown' : 'html', imageDataUrl: dataUrl })
-      })
-      if (!res.ok) { showToast('error', 'クイック共有に失敗しました'); return }
-      const j = await res.json()
-      setShareLink(j.shareUrl || null)
-      setShareExpiresAt(j.expiresAt ?? null)
-      setShareOpen(true)
-    } catch {
-      showToast('error', 'クイック共有に失敗しました')
-    }
+    showToast('error', '共有機能は利用できません')
   }
 
   const handleDeleteCurrent = async () => {
