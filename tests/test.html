@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bun's LLM Workflow: Lifetime Classify Infographic</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        bun: {
+                            gold: '#fbf0e3',
+                            pink: '#fca5a5',
+                            dark: '#0e1117',
+                            card: '#161b22',
+                            border: '#30363d',
+                            accent: '#ff8a00'
+                        },
+                        rust: '#e05d44',
+                        zig: '#f7a41d'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0d13;
+        }
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111420;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2b3040;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #404860;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen pb-16">
+
+    <!-- Header Hero Banner -->
+    <header class="relative overflow-hidden border-b border-slate-800 bg-gradient-to-b from-slate-900 via-slate-950 to-slate-950 py-12 px-4">
+        <!-- Background Glow -->
+        <div class="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[250px] bg-gradient-to-r from-orange-600/20 to-pink-600/20 blur-[100px] rounded-full pointer-events-none"></div>
+        
+        <div class="max-w-6xl mx-auto relative z-10">
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-3">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                    <span class="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse"></span>
+                    LLM Orchestration Analysis
+                </span>
+                <span class="text-xs text-slate-400 font-mono">Workflow ID: <a href="https://github.com/oven-sh/bun/blob/23427dbc12fdcff30c23a96a3d6a66d62fdc091d/.claude/workflows/lifetime-classify.workflow.js" target="_blank" class="text-blue-400 hover:underline">lifetime-classify.workflow.js ↗</a></span>
+            </div>
+            
+            <h1 class="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-orange-400 via-pink-400 to-amber-300 bg-clip-text text-transparent mb-4">
+                Claudeを極限まで使い倒す、<br class="hidden sm:inline">Bunの「ライフタイム自動分類」の凄み
+            </h1>
+            
+            <p class="text-lg text-slate-300 max-w-3xl leading-relaxed">
+                JavaScript超高速ランタイム「Bun」のリポジトリで、ZigのコードをRustに移植・連携する道標として走っているAIパイプライン。
+                単なるコード自動生成ではなく、<strong>「精密な静的解析」「ゲーム理論的多数決による自己デバッグ」</strong>をClaudeで行う革新的なワークフローを解剖します。
+            </p>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 mt-8">
+        
+        <!-- Key Highlights Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <!-- Card 1 -->
+            <div class="bg-slate-900/60 border border-slate-800 p-6 rounded-xl hover:border-orange-500/30 transition-all">
+                <div class="flex items-center gap-3 mb-3 text-orange-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
+                    <h3 class="font-bold text-lg">超難解な「翻訳」の自動化</h3>
+                </div>
+                <p class="text-sm text-slate-300 leading-relaxed">
+                    Zigのポインタ（<code>*T</code> / <code>?*T</code>）が、Rustにおける「誰に所有され、いつ消えるか」をコードの文脈（初期化と破棄）から見極め、11つの所有権モデルに落とし込みます。
+                </p>
+            </div>
+            <!-- Card 2 -->
+            <div class="bg-slate-900/60 border border-slate-800 p-6 rounded-xl hover:border-pink-500/30 transition-all">
+                <div class="flex items-center gap-3 mb-3 text-pink-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                    <h3 class="font-bold text-lg">3エージェント対話型検証</h3>
+                </div>
+                <p class="text-sm text-slate-300 leading-relaxed">
+                    不確実な判定やサンプルに対して、<strong>「3体の自律エージェントを敵対的に競わせ、2票以上の異議（Refute）で判定を却下・上書きする」</strong>という強固な多数決フィルターを採用。
+                </p>
+            </div>
+            <!-- Card 3 -->
+            <div class="bg-slate-900/60 border border-slate-800 p-6 rounded-xl hover:border-amber-400/30 transition-all">
+                <div class="flex items-center gap-3 mb-3 text-amber-400">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    <h3 class="font-bold text-lg">完全自律データシンセシス</h3>
+                </div>
+                <p class="text-sm text-slate-300 leading-relaxed">
+                    分類・検証されたデータは即座に集計され、リポジトリにコミット可能な <code>LIFETIMES.tsv</code>（タブ区切りテキスト）形式として最終出力。人間はマージするだけで完了します。
+                </p>
+            </div>
+        </div>
+
+        <!-- Section: 3-Phase Pipeline Architecture -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold mb-6 flex items-center gap-2">
+                <span class="text-orange-500">■</span> ワークフローの3フェーズ構造
+            </h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 relative">
+                <!-- Visual connecting lines for desktop -->
+                <div class="hidden lg:block absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-orange-500/30 via-pink-500/30 to-emerald-500/30 -translate-y-1/2 z-0"></div>
+
+                <!-- Phase 1: Classify -->
+                <div class="bg-slate-900 border-2 border-orange-500/40 p-6 rounded-xl shadow-xl shadow-orange-950/10 z-10 relative">
+                    <div class="absolute -top-3 left-6 bg-orange-600 text-xs font-mono font-bold px-3 py-1 rounded-full uppercase">
+                        Phase 01: Classify
+                    </div>
+                    <div class="mt-4">
+                        <div class="text-3xl font-extrabold text-orange-400 mb-2">1エージェント / 1ファイル</div>
+                        <h4 class="font-semibold text-lg text-slate-100 mb-2">生存期間の判定</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed mb-4">
+                            Zigの各ファイルにつき1体のClaudeエージェントを割り当て、構造体のメンバ変数をスキャン。
+                            <code>init()</code>や<code>deinit()</code>、メモリ割り当て（allocator）の処理を追いかけ、Rustのどの型に該当するかをマッピング。
+                        </p>
+                        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-[11px] text-orange-300 font-mono">
+                            <span class="text-slate-500">// AIのミッション</span><br>
+                            - 全ポインタフィールドを抽出<br>
+                            - 初期化/破棄の証拠（Evidence）を収集<br>
+                            - 一時判定クラスを設定
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phase 2: Verify -->
+                <div class="bg-slate-900 border-2 border-pink-500/40 p-6 rounded-xl shadow-xl shadow-pink-950/10 z-10 relative">
+                    <div class="absolute -top-3 left-6 bg-pink-600 text-xs font-mono font-bold px-3 py-1 rounded-full uppercase">
+                        Phase 02: Verify
+                    </div>
+                    <div class="mt-4">
+                        <div class="text-3xl font-extrabold text-pink-400 mb-2">3人寄れば、反証アリ</div>
+                        <h4 class="font-semibold text-lg text-slate-100 mb-2">敵対的相互監査 (3-Vote Refute)</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed mb-4">
+                            判定難易度の高い「UNKNOWN」や自信度「low」のフィールド、および自信度「high」の12%をランダムサンプリング。
+                            <strong>3体の監査エージェントが独立してレビュー。2票以上「Refute（反証）」が出れば元の判定は却下され、正しいクラスへ修正されます。</strong>
+                        </p>
+                        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-[11px] text-pink-300 font-mono">
+                            <span class="text-slate-500">// エージェント同士の戦い</span><br>
+                            Agent A: "これはOWNEDで合ってる？"<br>
+                            Agent B, C: "いや、deinitで解放されてない。PARAMだ！"<br>
+                            <span class="text-pink-500">→ 反証成功（判定の上書き適用）</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Phase 3: Synthesize -->
+                <div class="bg-slate-900 border-2 border-emerald-500/40 p-6 rounded-xl shadow-xl shadow-emerald-950/10 z-10 relative">
+                    <div class="absolute -top-3 left-6 bg-emerald-600 text-xs font-mono font-bold px-3 py-1 rounded-full uppercase">
+                        Phase 03: Synthesize
+                    </div>
+                    <div class="mt-4">
+                        <div class="text-3xl font-extrabold text-emerald-400 mb-2">統計＆TSV生成</div>
+                        <h4 class="font-semibold text-lg text-slate-100 mb-2">コンパイル可能成果物への出力</h4>
+                        <p class="text-xs text-slate-400 leading-relaxed mb-4">
+                            全ての分類データがマージされ、各フィールドの生存期間クラスごとの集計統計を出力。
+                            さらに、すぐにRustポートに使えるタブ区切りの <code>LIFETIMES.tsv</code> テキストを生成します。
+                        </p>
+                        <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-[11px] text-emerald-300 font-mono">
+                            <span class="text-slate-500">// 成果物プレビュー</span><br>
+                            file.zig \t Struct \t Field \t class \t rust_type...<br>
+                            → 移植作業用メタデータの構築完了！
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive Section: Try it yourself! -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 mb-12 shadow-2xl relative">
+            <div class="absolute top-0 right-0 transform translate-y-[-50%] mr-6 bg-gradient-to-r from-orange-500 to-pink-500 text-xs font-bold px-4 py-1.5 rounded-full shadow-lg">
+                INTERACTIVE SIMULATOR
+            </div>
+
+            <h2 class="text-2xl font-bold mb-2">インタラクティブ・ワークフロー・シミュレーター</h2>
+            <p class="text-sm text-slate-400 mb-6">
+                実際にワークフローを回す様子をデモします。任意のZigコードのスニペットを選び、分類エージェントがどう分析し、検証チーム（3エージェント）がどう衝突するかをリアルタイムにシミュレートしてみましょう。
+            </p>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Left Column: Input Selection and Code View -->
+                <div class="flex flex-col gap-4">
+                    <label class="block text-sm font-semibold text-slate-300">シミュレーションするポインタ定義を選択：</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button onclick="selectPreset('owned')" id="btn-owned" class="preset-btn px-4 py-3 rounded-xl border text-left transition-all bg-slate-800 border-slate-700 hover:border-orange-500 text-xs">
+                            <div class="font-bold text-orange-400 mb-1">例①: 自主管理ポインタ</div>
+                            <span class="text-[10px] text-slate-400">bun.allocatorで生成、deinitで明示的に破棄。</span>
+                        </button>
+                        <button onclick="selectPreset('jsc')" id="btn-jsc" class="preset-btn px-4 py-3 rounded-xl border text-left transition-all bg-slate-950 border-slate-800 hover:border-orange-500 text-xs">
+                            <div class="font-bold text-amber-400 mb-1">例②: JavaScriptCoreポインタ</div>
+                            <span class="text-[10px] text-slate-400">VMやGlobalObjectなどの参照を一時借用。</span>
+                        </button>
+                        <button onclick="selectPreset('backref')" id="btn-backref" class="preset-btn px-4 py-3 rounded-xl border text-left transition-all bg-slate-950 border-slate-800 hover:border-orange-500 text-xs">
+                            <div class="font-bold text-pink-400 mb-1">例③: 循環親参照 (Backref)</div>
+                            <span class="text-[10px] text-slate-400">@fieldParentPtrを使って親コンテナを逆引き。</span>
+                        </button>
+                        <button onclick="selectPreset('ambiguous')" id="btn-ambiguous" class="preset-btn px-4 py-3 rounded-xl border text-left transition-all bg-slate-950 border-slate-800 hover:border-orange-500 text-xs">
+                            <div class="font-bold text-purple-400 mb-1">例④: 判定の難しいケース (反証発生)</div>
+                            <span class="text-[10px] text-slate-400">初期化で割り当てるがdeinitを読まないと不明。</span>
+                        </button>
+                    </div>
+
+                    <!-- Code Preview Container -->
+                    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 mt-2">
+                        <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-800/60 text-xs text-slate-400">
+                            <span class="font-mono" id="file-name">src/bun.js/bindings/MyStruct.zig</span>
+                            <span class="px-2 py-0.5 rounded bg-orange-950 text-orange-400 text-[10px] font-mono">Zig Source</span>
+                        </div>
+                        <pre class="text-xs text-slate-300 overflow-x-auto code-font leading-relaxed h-[180px]" id="code-preview"></pre>
+                    </div>
+
+                    <button onclick="runSimulation()" id="run-btn" class="w-full bg-gradient-to-r from-orange-500 via-pink-500 to-amber-500 text-white font-bold py-3 px-6 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-orange-950/20">
+                        <svg class="w-5 h-5 animate-spin hidden" id="spinner" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                        <span>このポインタを分析＆相互レビューする (Run Workflow)</span>
+                    </button>
+                </div>
+
+                <!-- Right Column: Interactive Console and Output Simulation -->
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 flex flex-col justify-between min-h-[420px]">
+                    <div>
+                        <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+                            <h3 class="text-sm font-bold tracking-wider text-slate-400 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                WORKFLOW PIPELINE SIMULATION CONSOLE
+                            </h3>
+                            <span class="text-xs text-slate-500 font-mono" id="sim-status">Idle</span>
+                        </div>
+
+                        <!-- Step visualizer within console -->
+                        <div class="space-y-4">
+                            <!-- Step 1 Output -->
+                            <div id="step-classify" class="opacity-30 transition-all duration-300">
+                                <div class="flex items-center gap-2 mb-1.5 text-xs font-bold text-orange-400">
+                                    <div class="w-5 h-5 rounded bg-orange-950 flex items-center justify-center">1</div>
+                                    <span>[Phase: Classify] - Primary Classifier Agent</span>
+                                </div>
+                                <div class="bg-slate-900 border border-slate-800 rounded-lg p-3 text-xs code-font text-slate-300" id="step1-output">
+                                    エージェント起動待ち...
+                                </div>
+                            </div>
+
+                            <!-- Step 2 Output -->
+                            <div id="step-verify" class="opacity-30 transition-all duration-300">
+                                <div class="flex items-center gap-2 mb-1.5 text-xs font-bold text-pink-400">
+                                    <div class="w-5 h-5 rounded bg-pink-950 flex items-center justify-center">2</div>
+                                    <span>[Phase: Verify] - 3-Agent Peer Review (Consensus)</span>
+                                </div>
+                                <div class="bg-slate-900 border border-slate-800 rounded-lg p-3 text-xs code-font text-slate-300 space-y-2" id="step2-output">
+                                    相互監査の開始待ち...
+                                </div>
+                            </div>
+
+                            <!-- Step 3 Output -->
+                            <div id="step-synthesize" class="opacity-30 transition-all duration-300">
+                                <div class="flex items-center gap-2 mb-1.5 text-xs font-bold text-emerald-400">
+                                    <div class="w-5 h-5 rounded bg-emerald-950 flex items-center justify-center">3</div>
+                                    <span>[Phase: Synthesize] - Output (LIFETIMES.tsv row)</span>
+                                </div>
+                                <div class="bg-slate-900 border border-slate-800 rounded-lg p-3 text-xs code-font text-emerald-300" id="step3-output">
+                                    TSVレコード生成待ち...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Small explanation message inside terminal -->
+                    <div class="mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-400 leading-relaxed" id="simulation-notes">
+                        左側のプリセットを切り替え、「分析＆相互レビューする」を押すことで、ClaudeエージェントがZigのソースの挙動（代入と解放）を解析してRustの適切な型を決定する内部プロセスを観察できます。
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section: The 11 Lifetime Categories (Taxonomy) -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                <span class="text-pink-500">■</span> 高精度分類を支える11つの所有権タクソノミー
+            </h2>
+            <p class="text-sm text-slate-400 mb-6">
+                単に「スマートポインタに置換する」のではなく、Rustコンパイラに最適で安全な型を選択するため、Claudeにインプットされる分類の定義は恐ろしく精緻化されています。
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="taxonomy-grid">
+                <!-- Javascript will render custom detailed taxonomy cards -->
+            </div>
+        </section>
+
+        <!-- Section: Why is this workflow fascinating? -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            <div class="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 p-8 rounded-2xl">
+                <h3 class="text-xl font-bold mb-4 text-orange-400 flex items-center gap-2">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                    このワークフローの「凄み」と設計思想
+                </h3>
+                <ul class="space-y-4 text-sm text-slate-300">
+                    <li class="flex gap-2">
+                        <span class="text-orange-400 font-bold">1.</span>
+                        <div>
+                            <strong class="text-white block mb-0.5">コード自動化ではなく、人間の移植・再設計の支援</strong>
+                            コード全体をいきなりAIにRustに書き直させるのではなく、「ポインタをどう管理すべきか」というアーキテクチャ設計メタデータ（TSV）に変換し、人間が自信を持って判断できるようにしている点。
+                        </div>
+                    </li>
+                    <li class="flex gap-2">
+                        <span class="text-orange-400 font-bold">2.</span>
+                        <div>
+                            <strong class="text-white block mb-0.5">アドバーサリアル（敵対的）相互検証</strong>
+                            AIは1度正しいと思い込むとハルシネーション（誤判定）を維持しやすい。このワークフローは、別エージェントに「Claimed Class」と「Evidence」を渡し、<strong>「間違っているはずだ。反証せよ！」という敵対的ポジション（Adversarial）から監査させる</strong>ことで、信じられないほどの高い精度を実現しています。
+                        </div>
+                    </li>
+                    <li class="flex gap-2">
+                        <span class="text-orange-400 font-bold">3.</span>
+                        <div>
+                            <strong class="text-white block mb-0.5">ランダムサンプリング監査によるコスト効率化</strong>
+                            全ファイルを3-voteで回すと莫大なAPIコストがかかります。そこで、自信度が「low/UNKNOWN」のものだけ全監査し、自信度「high」のものは12%だけを抜き出して監査し、予算と精度の最適なバランスをとっています。
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-800 p-8 rounded-2xl flex flex-col justify-between">
+                <div>
+                    <h3 class="text-xl font-bold mb-4 text-pink-400 flex items-center gap-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                        実務から読み取れる背景
+                    </h3>
+                    <p class="text-sm text-slate-300 leading-relaxed mb-4">
+                        Bunは超高速なJavaScript実行環境であり、内部は<strong>Zig</strong>で記述されています。一方、JavaScriptエンジンであるSafariの<strong>JavaScriptCore（JSC）</strong>はC++で書かれています。
+                        そして最近のBunは徐々に<strong>Rust</strong>を採用し始めています（例: <code>bun_sys</code> や新HTTPスタック）。
+                    </p>
+                    <p class="text-sm text-slate-300 leading-relaxed">
+                        メモリ安全性をZigのようにマニュアル管理する言語から、コンパイラが厳密な生存期間（Lifetimes）を強要するRustへ移行・相互運用する場合、この<strong>「ポインタの所有権はどこにあるか？」</strong>の解明が最も手間で、最も壊れやすい壁になります。
+                        このスクリプトはまさに、そのBun開発陣が直面する最大の苦行を突破するために生まれた、極めて実戦的な知恵の結晶なのです。
+                    </p>
+                </div>
+                
+                <div class="mt-6 p-4 rounded-xl bg-slate-950 border border-slate-800/60 flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                    </div>
+                    <div class="text-xs">
+                        <strong class="text-slate-100 block mb-0.5">気づき</strong>
+                        「AIにプログラミングさせる」とは、コードの単純置換だけではなく、こうして<strong>専門的な概念のメタモデル（タクソノミー）を教え込み、高度な分類と監査のプロセスを自律化させること</strong>だと教えてくれます。
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="max-w-6xl mx-auto px-4 pt-12 border-t border-slate-800 text-center text-xs text-slate-500">
+        <p class="mb-2">LLM Workflow Deep-Dive / Built with Tailwind & Passion for Rust, Zig & Claude Workflows.</p>
+        <p>This page is an interactive infographic analyzing oven-sh/bun's open-source workflow scripts.</p>
+    </footer>
+
+    <script>
+        // Data for taxonomy
+        const taxonomyData = [
+            {
+                id: "OWNED",
+                rust: "Box<T> / Option<Box<T>>",
+                zig: "bun.new / allocator.create",
+                desc: "この構造体が生成し、deinit()で確実に破棄（deinit + free）する、完全な単一所有者。",
+                color: "border-orange-500/30 text-orange-400 bg-orange-950/20"
+            },
+            {
+                id: "SHARED",
+                rust: "Rc<T> / Arc<T>",
+                zig: ".deref() / .release()",
+                desc: "参照カウンタ持ち。複数の所有者が存在し、deinit()でカウンタを減少（解放チェック）させるタイプ。",
+                color: "border-pink-500/30 text-pink-400 bg-pink-950/20"
+            },
+            {
+                id: "BORROW_PARAM",
+                rust: "struct<'a> / &'a T",
+                zig: "Constructor param",
+                desc: "構造体の初期化時に引数で受け取るポインタ。自分より長生きすることが、呼び出し元（Caller）によって保証されている。",
+                color: "border-blue-500/30 text-blue-400 bg-blue-950/20"
+            },
+            {
+                id: "BORROW_FIELD",
+                rust: "&'a T (Tied to sibling)",
+                zig: "Points into sibling",
+                desc: "同じ構造体の「別のフィールド」が持っているメモリを指すポインタ（例: self.bufferの一部を切り出したスライスなど）。",
+                color: "border-indigo-500/30 text-indigo-400 bg-indigo-950/20"
+            },
+            {
+                id: "STATIC",
+                rust: "&'static T",
+                zig: "Global / VirtualMachine.get()",
+                desc: "グローバル変数やシングルトン、静的バッファから割り当てられ、アプリケーション終了時まで一生涯生き続ける参照。",
+                color: "border-amber-500/30 text-amber-400 bg-amber-950/20"
+            },
+            {
+                id: "JSC_BORROW",
+                rust: "&JSGlobalObject / &VM",
+                zig: "VirtualMachine/CallFrame",
+                desc: "JavaScriptCore(JSC)由来の特殊ポインタ。絶対的に長期保存せず、関数呼び出しの間だけ一時借用する暗黙ルール。",
+                color: "border-yellow-500/30 text-yellow-400 bg-yellow-950/20"
+            },
+            {
+                id: "BACKREF",
+                rust: "*const Parent (raw)",
+                zig: "@fieldParentPtr",
+                desc: "自分を所有してくれている親構造体に対するポインタ。Rustだと循環参照回避のためWeakにするか、生のポインタにする必要がある。",
+                color: "border-purple-500/30 text-purple-400 bg-purple-950/20"
+            },
+            {
+                id: "INTRUSIVE",
+                rust: "*mut T (raw)",
+                zig: "next / prev / links",
+                desc: "侵入型リスト（Intrusive List）用の隣接ポインタ。@fieldParentPtrを使ってコンテナを取得するような双方向リストで多用。",
+                color: "border-red-500/30 text-red-400 bg-red-950/20"
+            },
+            {
+                id: "FFI",
+                rust: "*mut T / *const T (raw)",
+                zig: "_sys crate / extern",
+                desc: "C言語との境界でやり取りされる生のポインタ。または `*_sys` クレートで使う、Rustの安全チェック対象外のC型ポインタ。",
+                color: "border-emerald-500/30 text-emerald-400 bg-emerald-950/20"
+            },
+            {
+                id: "ARENA",
+                rust: "StoreRef<T> / *const T",
+                zig: "arena.reset()",
+                desc: "自前で解放処理を行わず、アリーナ（親のプールアロケータ）によって一括管理され、親の消滅時に一緒に解放される要素。",
+                color: "border-teal-500/30 text-teal-400 bg-teal-950/20"
+            },
+            {
+                id: "UNKNOWN",
+                rust: "Option<NonNull<T>> + TODO",
+                zig: "No info in file",
+                desc: "現在のファイルだけの情報ではどうしても生存期間が判明しなかったケース（要確認）。",
+                color: "border-slate-500/30 text-slate-400 bg-slate-950/20"
+            }
+        ];
+
+        // Render Taxonomy cards
+        const taxonomyGrid = document.getElementById('taxonomy-grid');
+        taxonomyData.forEach(item => {
+            const card = document.createElement('div');
+            card.className = `p-4 rounded-xl border ${item.color} flex flex-col justify-between h-[180px] hover:scale-[1.01] transition-all`;
+            card.innerHTML = `
+                <div>
+                    <div class="flex justify-between items-start gap-2 mb-2">
+                        <span class="font-mono text-xs font-bold bg-slate-950/60 px-2 py-0.5 rounded border border-slate-800">${item.id}</span>
+                        <span class="text-[10px] text-slate-400 text-right font-mono truncate max-w-[120px]" title="${item.zig}">${item.zig}</span>
+                    </div>
+                    <div class="font-mono text-xs font-semibold text-slate-200 mb-2 truncate" title="${item.rust}">→ ${item.rust}</div>
+                    <p class="text-[11px] text-slate-300 leading-normal">${item.desc}</p>
+                </div>
+            `;
+            taxonomyGrid.appendChild(card);
+        });
+
+        // Interactive simulation presets
+        const presets = {
+            owned: {
+                file: "src/bun.js/bindings/MyObjectStore.zig",
+                code: `const MyObjectStore = struct {
+    allocator: std.mem.Allocator,
+    cached_data: *DataPayload, // ← このポインタを分析！
+
+    pub fn init(allocator: std.mem.Allocator) !*MyObjectStore {
+        var self = try allocator.create(MyObjectStore);
+        self.allocator = allocator;
+        self.cached_data = try allocator.create(DataPayload);
+        return self;
+    }
+
+    pub fn deinit(self: *MyObjectStore) void {
+        self.allocator.destroy(self.cached_data); // ← ここで破棄！
+        self.allocator.destroy(self);
+    }
+};`,
+                class: "OWNED",
+                rust_type: "Box<DataPayload>",
+                evidence: "MyObjectStore.zig:13 - self.allocator.destroy(self.cached_data)",
+                votes: [
+                    { voter: "Verifier 1", refuted: false, correct: "OWNED", reason: "deinitで直接destroyされており所有権は単一構造体にある。" },
+                    { voter: "Verifier 2", refuted: false, correct: "OWNED", reason: "initでallocatorから直接生成され、deinitで解放されているため、完璧にOWNED。" },
+                    { voter: "Verifier 3", refuted: false, correct: "OWNED", reason: "同意。Boxにラップして移植する形に完璧に合致。" }
+                ],
+                consensus: "OWNED",
+                notes: "典型的なOWNEDケースです。構造体自身が生成し、deinit時に責任を持って破棄を行っているため、Rustの <code>Box<T></code> へ直訳することができます。監査役も全員一致で合意しました。"
+            },
+            jsc: {
+                file: "src/bun.js/bindings/NativeCallback.zig",
+                code: `const NativeCallback = struct {
+    ctx: *JSGlobalObject, // ← このポインタを分析！
+    callback_fn: *JSValue,
+
+    pub fn init(ctx: *JSGlobalObject, callback: *JSValue) NativeCallback {
+        return NativeCallback{
+            .ctx = ctx,
+            .callback_fn = callback,
+        };
+    }
+    // deinitは定義されていない
+};`,
+                class: "JSC_BORROW",
+                rust_type: "&JSGlobalObject",
+                evidence: "NativeCallback.zig:5 - ctx is assigned directly from constructor param",
+                votes: [
+                    { voter: "Verifier 1", refuted: false, correct: "JSC_BORROW", reason: "JSGlobalObjectはJavaScriptCoreオブジェクトであり、常に短命借用されるべき。" },
+                    { voter: "Verifier 2", refuted: false, correct: "JSC_BORROW", reason: "JSCのポインタであるため例外ルール(JSC_BORROW Heuristic)に適用され、ライフタイム不要。" },
+                    { voter: "Verifier 3", refuted: false, correct: "JSC_BORROW", reason: "JSC_BORROWで判定。Rust側では一時的な参照受け渡しとして設計可能。" }
+                ],
+                consensus: "JSC_BORROW",
+                notes: "JavaScriptCore特有のオブジェクト（JSGlobalObject, VMなど）は、ヒープに長期保存されることはなく、JS実行中のコンテキスト（CallFrameなど）の範囲内でのみ一時参照されます。コンパイル時のライフタイム表記を省略しやすくするための重要な『特例（Heuristic）』です。"
+            },
+            backref: {
+                file: "src/bun.js/bindings/ListItem.zig",
+                code: `const ListContainer = struct {
+    first: ?*ListItem,
+};
+
+const ListItem = struct {
+    // コンテナ内のフィールドとしての要素
+    node_ptr: *anyopaque, 
+
+    pub fn getContainer(self: *ListItem) *ListContainer {
+        // @fieldParentPtrを使って親ListContainerを取得！
+        return @fieldParentPtr(ListContainer, "first", self);
+    }
+};`,
+                class: "BACKREF",
+                rust_type: "*const ListContainer",
+                evidence: "ListItem.zig:10 - @fieldParentPtr recovers parent ListContainer",
+                votes: [
+                    { voter: "Verifier 1", refuted: false, correct: "BACKREF", reason: "親コンテナへの参照を逆算しており、Rustでは安全なポインタとしての表現が難しく、raw pointerが適切。" },
+                    { voter: "Verifier 2", refuted: false, correct: "BACKREF", reason: "親へのポインタなのでBACKREFに完璧に該当。" },
+                    { voter: "Verifier 3", refuted: true, correct: "BACKREF", reason: "最初BORROWかと思いましたが、@fieldParentPtrなのでBACKREF。生ポインタ管理に決定。" }
+                ],
+                consensus: "BACKREF",
+                notes: "Zigでよく見られる「フィールドが属する構造体自体（親）のアドレスをオフセット計算で復元する」パターンです。Rustでこれを安全に記述するのは非常に難しいため、ワークフローは <code>*const Parent</code>（生のポインタ）にフォールバックさせます。"
+            },
+            ambiguous: {
+                file: "src/bun.js/bindings/AmbiguousNode.zig",
+                code: `const AmbiguousNode = struct {
+    external_ref: *DataBuffer, // ← このポインタを分析！
+
+    pub fn init(external: *DataBuffer) AmbiguousNode {
+        return AmbiguousNode{
+            .external_ref = external
+        };
+    }
+    // ファイル内にdeinitが存在せず、呼び出し元もこのファイルからは不明。
+};`,
+                class: "UNKNOWN",
+                rust_type: "Option<NonNull<DataBuffer>>",
+                evidence: "AmbiguousNode.zig:5 - assigned from external param but lifecycle is opaque",
+                votes: [
+                    { voter: "Verifier 1", refuted: true, correct: "BORROW_PARAM", reason: "deinitがなく、呼び出し元引数から渡されているため、外部が生存を保証している（BORROW_PARAM）と判定すべき。" },
+                    { voter: "Verifier 2", refuted: true, correct: "BORROW_PARAM", reason: "同意。deinitが定義されていないことから、この構造体はDataBufferを所有していない。&'a DataBuffer が最善。" },
+                    { voter: "Verifier 3", refuted: false, correct: "UNKNOWN", reason: "元のエージェントと同じく、外部アロケータでの消滅の可能性を捨て切れないためUNKNOWNが安全と見る。" }
+                ],
+                consensus: "BORROW_PARAM",
+                notes: "<strong>ここが一番面白いポイントです！</strong> 一次判定エージェントは自信のなさから『UNKNOWN』と判定して逃げました。しかし、相互監査チームの3エージェントが adversarial（異議申し立て）の視点で検証した結果、<strong>「deinitが存在せず引数から直結しているため、これは所有者ではなく外部借用（BORROW_PARAM）であるべきだ」</strong>と2対1で反証に成功。判定が上書き修正されました。"
+            }
+        };
+
+        let currentPreset = 'owned';
+
+        function selectPreset(name) {
+            currentPreset = name;
+            // Highlight button
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('bg-slate-800', 'border-orange-500', 'border-pink-500', 'border-amber-500', 'border-purple-500');
+                btn.classList.add('bg-slate-950', 'border-slate-800');
+            });
+            const selectedBtn = document.getElementById(`btn-${name}`);
+            selectedBtn.classList.remove('bg-slate-950', 'border-slate-800');
+            selectedBtn.classList.add('bg-slate-800');
+            if (name === 'owned') selectedBtn.classList.add('border-orange-500');
+            if (name === 'jsc') selectedBtn.classList.add('border-amber-500');
+            if (name === 'backref') selectedBtn.classList.add('border-pink-500');
+            if (name === 'ambiguous') selectedBtn.classList.add('border-purple-500');
+
+            // Render code
+            document.getElementById('file-name').textContent = presets[name].file;
+            document.getElementById('code-preview').textContent = presets[name].code;
+
+            // Reset simulation outputs
+            resetSimulationView();
+        }
+
+        function resetSimulationView() {
+            document.getElementById('step-classify').style.opacity = '0.3';
+            document.getElementById('step-verify').style.opacity = '0.3';
+            document.getElementById('step-synthesize').style.opacity = '0.3';
+            
+            document.getElementById('step1-output').innerHTML = "エージェント起動待ち...";
+            document.getElementById('step2-output').innerHTML = "相互監査の開始待ち...";
+            document.getElementById('step3-output').innerHTML = "TSVレコード生成待ち...";
+            document.getElementById('sim-status').textContent = "Idle";
+            document.getElementById('simulation-notes').innerHTML = "左側のプリセットを切り替え、「分析＆相互レビューする」を押すことで、エージェントワークフローの動作を可視化します。";
+        }
+
+        // Run simulation animation
+        function runSimulation() {
+            const data = presets[currentPreset];
+            const runBtn = document.getElementById('run-btn');
+            const spinner = document.getElementById('spinner');
+            
+            // UI state: Running
+            runBtn.disabled = true;
+            spinner.classList.remove('hidden');
+            document.getElementById('sim-status').textContent = "Running Classifier...";
+
+            // Reset view
+            resetSimulationView();
+
+            // Phase 1: Classify (0.8s)
+            setTimeout(() => {
+                document.getElementById('step-classify').style.opacity = '1';
+                document.getElementById('step1-output').innerHTML = `
+<div class="text-orange-400 font-bold">✓ 分析完了 (Confidence: ${currentPreset === 'ambiguous' ? 'low' : 'high'})</div>
+<div><span class="text-slate-500">Proposed Class:</span> <span class="text-white font-bold">${data.class}</span></div>
+<div><span class="text-slate-500">Rust Type:</span> <code class="bg-slate-950 px-1 py-0.5 rounded text-yellow-300">${data.rust_type}</code></div>
+<div><span class="text-slate-500">Evidence:</span> <span class="italic text-slate-400">"${data.evidence}"</span></div>
+                `.trim();
+                document.getElementById('sim-status').textContent = "Running Verify Pipeline...";
+
+                // Phase 2: Verify (1.6s)
+                setTimeout(() => {
+                    document.getElementById('step-verify').style.opacity = '1';
+                    
+                    let votesHtml = '';
+                    let refutesCount = 0;
+                    data.votes.forEach(v => {
+                        if (v.refuted) refutesCount++;
+                        votesHtml += `
+<div class="border-l-2 ${v.refuted ? 'border-red-500 bg-red-950/10' : 'border-emerald-500 bg-emerald-950/10'} pl-2 py-1">
+    <div class="flex justify-between font-bold text-[10px]">
+        <span>${v.voter}</span>
+        <span class="${v.refuted ? 'text-red-400' : 'text-emerald-400'}">${v.refuted ? 'REFUTED (異議アリ)' : 'AGREED (異議なし)'}</span>
+    </div>
+    <div class="text-[10px] text-slate-300">判定案: ${v.correct}</div>
+    <div class="text-[9px] text-slate-400 italic">"${v.reason}"</div>
+</div>
+                        `;
+                    });
+
+                    const refutedTitle = refutesCount >= 2 
+                        ? `<div class="text-red-400 font-bold mb-1">✕ 反証が多数決成立 (${refutesCount}/3 異議) → 判定を修正</div>`
+                        : `<div class="text-emerald-400 font-bold mb-1">✓ 原案合意が成立 (${3 - refutesCount}/3 同意) → 判定確定</div>`;
+
+                    document.getElementById('step2-output').innerHTML = `
+${refutedTitle}
+<div class="space-y-2 mt-2">
+    ${votesHtml}
+</div>
+<div class="mt-2 text-[10px] text-pink-300 font-bold">
+    最終コンセンサス決定: <span class="bg-pink-950/50 px-2 py-0.5 rounded text-white font-mono">${data.consensus}</span>
+</div>
+                    `.trim();
+
+                    document.getElementById('sim-status').textContent = "Running Synthesize...";
+
+                    // Phase 3: Synthesize (2.4s)
+                    setTimeout(() => {
+                        document.getElementById('step-synthesize').style.opacity = '1';
+                        
+                        // Create TSV line dummy
+                        const tsvLine = `${data.file}\tMyStruct\tptr_field\t${data.consensus}\t${data.rust_type}\t"${data.evidence}"`;
+                        
+                        document.getElementById('step3-output').innerHTML = `
+<div class="text-emerald-400 font-bold mb-1">✓ TSV出力に保存完了</div>
+<div class="bg-slate-950 p-2 rounded border border-slate-800 overflow-x-auto text-[10px] select-all cursor-pointer" title="クリックしてコピー">
+    ${tsvLine}
+</div>
+                        `.trim();
+
+                        document.getElementById('sim-status').textContent = "Completed";
+                        document.getElementById('simulation-notes').innerHTML = `
+<strong class="text-slate-200">【シミュレーション解説】</strong><br>
+${data.notes}
+                        `.trim();
+
+                        // Enable button
+                        runBtn.disabled = false;
+                        spinner.classList.add('hidden');
+
+                    }, 800);
+
+                }, 1000);
+
+            }, 800);
+        }
+
+        // Initialize with owned preset
+        window.onload = function() {
+            selectPreset('owned');
+        };
+    </script>
+</body>
+</html>

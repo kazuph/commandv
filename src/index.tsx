@@ -82,6 +82,7 @@ function decodeJwtPayload(idToken: string): any {
 }
 
 const app = new Hono<Env>()
+const CLIENT_ASSET_VERSION = '20260522-html-comment-v8'
 
 // basic hardening header
 app.use('*', poweredBy())
@@ -567,7 +568,7 @@ app.get('/s/:token', async (c) => {
         `}} />
         <link href="/static/style.css" rel="stylesheet" />
         {import.meta.env.PROD ? (
-          <script type="module" src="/static/client.js"></script>
+          <script type="module" src={`/static/client.js?v=${CLIENT_ASSET_VERSION}`}></script>
         ) : (
           <script type="module" src="/src/client.tsx"></script>
         )}
@@ -648,7 +649,7 @@ app.get('*', async (c) => {
           `}} />
           <link href="/static/style.css" rel="stylesheet" />
           {import.meta.env.PROD ? (
-            <script type="module" src="/static/client.js"></script>
+            <script type="module" src={`/static/client.js?v=${CLIENT_ASSET_VERSION}`}></script>
           ) : (
             <script type="module" src="/src/client.tsx"></script>
           )}

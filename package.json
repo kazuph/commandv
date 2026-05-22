@@ -25,6 +25,7 @@
     "preview": "wrangler dev server-build/index.js",
     "deploy": "$npm_execpath run build && wrangler deploy server-build/index.js",
     "lint": "oxlint src/",
+    "test:e2e": "playwright test",
     "type-check": "tsgo --noEmit"
   },
   "dependencies": {
@@ -33,6 +34,7 @@
     "dompurify": "^3.2.7",
     "hono": "^4.12.18",
     "html-to-image": "^1.11.13",
+    "html2canvas": "1.4.1",
     "katex": "^0.16.45",
     "lodash": "^4.18.1",
     "lucide-react": "^0.487.0",
@@ -48,6 +50,7 @@
     "@cloudflare/workers-types": "^4.20260507.1",
     "@hono/vite-build": "^1.11.1",
     "@hono/vite-dev-server": "^0.25.3",
+    "@playwright/test": "1.57.0",
     "@types/dompurify": "^3.2.0",
     "@types/katex": "^0.16.8",
     "@types/lodash": "^4.17.24",

@@ -51,6 +51,176 @@ const {
 
 // Mermaid用の自動補正は原則オフ（不要/有害な書き換えを避ける）
 const ENABLE_MERMAID_PREPROCESS = false;
+const HTML_CAPTURE_STYLE_PROPERTIES = [
+  'align-items',
+  'background',
+  'background-color',
+  'background-image',
+  'background-position',
+  'background-repeat',
+  'background-size',
+  'border',
+  'border-bottom',
+  'border-bottom-color',
+  'border-bottom-left-radius',
+  'border-bottom-right-radius',
+  'border-bottom-style',
+  'border-bottom-width',
+  'border-color',
+  'border-left',
+  'border-left-color',
+  'border-left-style',
+  'border-left-width',
+  'border-radius',
+  'border-right',
+  'border-right-color',
+  'border-right-style',
+  'border-right-width',
+  'border-style',
+  'border-top',
+  'border-top-color',
+  'border-top-left-radius',
+  'border-top-right-radius',
+  'border-top-style',
+  'border-top-width',
+  'border-width',
+  'box-shadow',
+  'box-sizing',
+  'color',
+  'display',
+  'filter',
+  'flex',
+  'flex-basis',
+  'flex-direction',
+  'flex-grow',
+  'flex-shrink',
+  'flex-wrap',
+  'font',
+  'font-family',
+  'font-size',
+  'font-style',
+  'font-weight',
+  'gap',
+  'grid-template-columns',
+  'height',
+  'inset',
+  'justify-content',
+  'left',
+  'letter-spacing',
+  'line-height',
+  'margin',
+  'margin-bottom',
+  'margin-left',
+  'margin-right',
+  'margin-top',
+  'max-width',
+  'min-height',
+  'object-fit',
+  'opacity',
+  'overflow',
+  'padding',
+  'padding-bottom',
+  'padding-left',
+  'padding-right',
+  'padding-top',
+  'position',
+  'right',
+  'text-align',
+  'text-decoration',
+  'top',
+  'transform',
+  'transform-origin',
+  'white-space',
+  'width',
+  'z-index',
+];
+
+type PreviewMode = 'react' | 'html' | 'markdown';
+
+const HTML_TAG_PATTERN = /<\/?(?:html|head|body|main|header|footer|nav|section|article|aside|div|span|p|a|button|form|input|label|textarea|select|option|ul|ol|li|table|thead|tbody|tr|th|td|h[1-6]|img|picture|source|svg|path|canvas|script|style|link|meta|title|iframe|video|audio|figure|figcaption|pre|code)\b/i;
+
+// Pasted artifacts arrive as full docs, HTML fragments, React components, or Markdown.
+// Keep this conservative: HTML fragments must not fall into the React compiler.
+export const detectCodeType = (code: string): PreviewMode => {
+  const trimmed = code.trim();
+  if (!trimmed) return 'react';
+
+  const startsAsHtmlDocument = /^<html(?:\s|>)/i.test(trimmed) || (
+    /^<!doctype\s+html\b/i.test(trimmed) && /<(?:html|head|body)(?:\s|>)/i.test(trimmed)
+  );
+  if (startsAsHtmlDocument) {
+    return 'html';
+  }
+
+  const reactFeatures = [
+    /import\s+.*from\s+['"][^'"]+['"]/i.test(code),
+    /export\s+default\s+/i.test(code),
+    /(?:function|const|class)\s+[A-Z][A-Za-z0-9_]*\b/.test(code),
+    /\buse(?:State|Effect|Ref|Memo|Callback|Reducer|Context)\b/.test(code),
+    /\bReact\.(?:Component|createElement|Fragment)\b/.test(code),
+    /\bclassName\s*=/.test(code),
+    /\bon[A-Z][A-Za-z0-9_]*\s*=/.test(code),
+  ];
+  const hasReactSignal = reactFeatures.some(Boolean);
+
+  if (hasReactSignal) {
+    return 'react';
+  }
+
+  const startsAsHtml = trimmed.startsWith('<!--') || /^<\/?[a-z][\w:-]*(?:\s|>|\/>)/i.test(trimmed);
+  const htmlFeatures = [
+    /^<!DOCTYPE\s+html\b/i.test(trimmed),
+    /<html[\s>]/i.test(code),
+    /<(?:head|body)[\s>]/i.test(code),
+    /<!--[\s\S]*?-->/.test(code),
+    HTML_TAG_PATTERN.test(code),
+    /\bclass\s*=/.test(code),
+  ];
+  const htmlFeatureCount = htmlFeatures.filter(Boolean).length;
+
+  if (startsAsHtml && htmlFeatureCount >= 1) {
+    return 'html';
+  }
+
+  const markdownFeatures = [
+    /^#{1,6}\s/m.test(code),
+    /```[\s\S]*?```/.test(code),
+    /\*\*[^*\n]+?\*\*/.test(code),
+    /\[[^\]\n]+?\]\([^)]+?\)/.test(code),
+    /^\s*[-*+]\s/m.test(code),
+    /^\s*\d+\.\s/m.test(code),
+    /^\s*>\s/m.test(code),
+    /^\s*\|.*\|.*\|/m.test(code),
+    /\$\$[\s\S]*?\$\$|(?<!\$)\$[^$\n]+?\$(?!\$)/.test(code),
+  ];
+  const mdFeatureCount = markdownFeatures.filter(Boolean).length;
+
+  if (mdFeatureCount >= 2 || /^#{1,6}\s/m.test(code) || /```[\s\S]*?```/.test(code)) {
+    return 'markdown';
+  }
+
+  return htmlFeatureCount > 0 ? 'html' : 'react';
+};
+
+const normalizeReactSource = (code: string): string => {
+  return code
+    .replace(/^\s*<!doctype[^>\n]*(?:>|$)/i, (match) => `/* ${match.replace(/\*\//g, '* /')} */`)
+    .replace(/<!--([\s\S]*?)-->/g, (_match, comment: string) => {
+      const safeComment = comment.replace(/\*\//g, '* /');
+      return `/*${safeComment}*/`;
+    })
+    .replace(/^\s*<!--([^\n]*)$/m, (_match, comment: string) => {
+      const safeComment = comment.replace(/\*\//g, '* /');
+      return `/*${safeComment}*/`;
+    })
+    .replace(/<style(\s[^>]*)?>([\s\S]*?)<\/style>/gi, (_match, attrs = '', css: string) => {
+      if (css.trim().startsWith('{')) {
+        return `<style${attrs}>${css}</style>`;
+      }
+      const safeCss = css.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
+      return `<style${attrs}>{\`${safeCss}\`}</style>`;
+    });
+};
 
 import AppleLogo from './AppleLogo';
 import WelcomeScreen from './WelcomeScreen';
@@ -225,13 +395,14 @@ const scheduleEsbuildPreload = (onEsbuildReady: () => void) => {
 // Safe component execution function
 const compileJSX = async (code: string): Promise<React.ComponentType> => {
   try {
+    const normalizedCode = normalizeReactSource(code);
     // ESBuildを使用してJSXをトランスフォーム（Babelの代わり）
     if (!window.esbuild) {
       throw new Error('ESBuild not loaded. Please try again in a moment.');
     }
 
     // Load D3.js on-demand only if code references d3
-    const usesD3 = /\bd3\b/.test(code);
+    const usesD3 = /\bd3\b/.test(normalizedCode);
     if (usesD3 && !window.d3) {
       await loadD3();
     }
@@ -267,7 +438,7 @@ const compileJSX = async (code: string): Promise<React.ComponentType> => {
     };
 
     // Strip import/export statements (more carefully)
-    let strippedCode = code;
+    let strippedCode = normalizedCode;
     
     // Remove imports
     strippedCode = strippedCode
@@ -277,7 +448,7 @@ const compileJSX = async (code: string): Promise<React.ComponentType> => {
     
     // 優先的にexport defaultで定義されたコンポーネントを検出する
     const defaultExportPattern = /export\s+default\s+([A-Z][A-Za-z0-9_]*)/;
-    let defaultExportMatch = code.match(defaultExportPattern);
+    let defaultExportMatch = normalizedCode.match(defaultExportPattern);
     let componentName: string | null = defaultExportMatch ? defaultExportMatch[1] : null;
     
     // export default が見つからない場合は他のパターンを検索
@@ -437,12 +608,12 @@ const ComponentPreviewer: React.FC = () => {
   const [component, setComponent] = useState<React.ComponentType | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showCode, setShowCode] = useState<boolean>(false); // Default to closed
-  const [mode, setMode] = useState<'react' | 'html' | 'markdown'>('react'); // モード：ReactコードかHTMLかMarkdownか
-  const [esbuildReady, setEsbuildReady] = useState<boolean>(false); // ESBuildの初期化状態
+  const [mode, setMode] = useState<PreviewMode>('react'); // モード：ReactコードかHTMLかMarkdownか
   const [pendingCode, setPendingCode] = useState<string | null>(null); // 初期化待ちのコード
   const previewRef = useRef<HTMLDivElement>(null);
   const componentRef = useRef<HTMLDivElement>(null); // コンポーネント自体を参照するためのref
   const htmlPreviewRef = useRef<HTMLIFrameElement>(null);
+  const [htmlPreviewHeight, setHtmlPreviewHeight] = useState<number>(600);
   const [showHeader, setShowHeader] = useState<boolean>(true); // 帯の表示制御
   const [isMobileDevice, setIsMobileDevice] = useState<boolean>(false);
   const [canPaste, setCanPaste] = useState<boolean>(false); // モバイル用ペースト可否
@@ -480,6 +651,211 @@ const ComponentPreviewer: React.FC = () => {
 
     return html;
   }, [mode, code]);
+
+  const resizeHtmlPreview = () => {
+    const iframe = htmlPreviewRef.current;
+    const doc = iframe?.contentDocument;
+    if (!iframe || !doc) return;
+
+    const body = doc.body;
+    const root = doc.documentElement;
+    const nextHeight = Math.max(
+      600,
+      body?.scrollHeight || 0,
+      body?.offsetHeight || 0,
+      root?.scrollHeight || 0,
+      root?.offsetHeight || 0
+    );
+    setHtmlPreviewHeight(nextHeight);
+  };
+
+const scheduleHtmlPreviewResize = () => {
+    resizeHtmlPreview();
+    [100, 500, 1200, 2500].forEach((delay) => {
+      window.setTimeout(resizeHtmlPreview, delay);
+    });
+  };
+
+  useEffect(() => {
+    if (mode !== 'html') return;
+    setHtmlPreviewHeight(600);
+    window.setTimeout(scheduleHtmlPreviewResize, 0);
+  }, [mode, iframeSrcDoc]);
+
+  const captureHtmlWithHtml2Canvas = async (
+    element: HTMLElement,
+    width: number,
+    height: number,
+    backgroundColor: string
+  ): Promise<string> => {
+    const html2canvasModule = await import('html2canvas');
+    const html2canvas = html2canvasModule.default;
+    const maxPixels = 16_000_000;
+    const scale = Math.max(0.5, Math.min(1, Math.sqrt(maxPixels / Math.max(1, width * height))));
+    const canvas = await html2canvas(element, {
+      backgroundColor: backgroundColor === 'transparent' ? null : backgroundColor,
+      width,
+      height,
+      windowWidth: width,
+      windowHeight: height,
+      scrollX: 0,
+      scrollY: 0,
+      scale,
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      onclone: (documentClone) => {
+        const body = documentClone.body;
+        if (body) {
+          body.style.margin = '0';
+          body.style.backgroundColor = backgroundColor;
+        }
+      }
+    });
+    return canvas.toDataURL('image/png');
+  };
+
+  const loadImageDataUrl = (dataUrl: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
+    const image = document.createElement('img');
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = dataUrl;
+  });
+
+  const captureHtmlInSlices = async (
+    element: HTMLElement,
+    width: number,
+    height: number,
+    backgroundColor: string,
+    iframeWindow: Window
+  ): Promise<string> => {
+    const sliceHeight = 900;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Could not create canvas context');
+    context.fillStyle = backgroundColor === 'transparent' ? '#ffffff' : backgroundColor;
+    context.fillRect(0, 0, width, height);
+
+    for (let offset = 0; offset < height; offset += sliceHeight) {
+      const currentHeight = Math.min(sliceHeight, height - offset);
+      console.log('captureIframe: Capturing slice...', { offset, currentHeight });
+      const dataUrl = await htmlToImage.toPng(element, {
+        width,
+        height: currentHeight,
+        canvasWidth: width,
+        canvasHeight: currentHeight,
+        pixelRatio: 1,
+        backgroundColor,
+        skipFonts: true,
+        cacheBust: true,
+        includeStyleProperties: HTML_CAPTURE_STYLE_PROPERTIES,
+        imagePlaceholder: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==',
+        filter: (domNode: HTMLElement) => {
+          if (['SCRIPT', 'STYLE', 'LINK', 'META'].includes(domNode.tagName)) {
+            return false;
+          }
+          if (iframeWindow.SVGElement && domNode instanceof iframeWindow.SVGElement) {
+            return false;
+          }
+          return true;
+        },
+        style: {
+          transform: `translateY(-${offset}px)`,
+          transformOrigin: 'top left',
+          width: `${width}px`,
+          height: `${height}px`,
+          margin: '0',
+          padding: '0',
+          backgroundColor
+        }
+      });
+      const image = await loadImageDataUrl(dataUrl);
+      context.drawImage(image, 0, offset, width, currentHeight);
+    }
+
+    return canvas.toDataURL('image/png');
+  };
+
+  const captureHtmlByTopLevelElements = async (
+    body: HTMLElement,
+    width: number,
+    height: number,
+    backgroundColor: string,
+    iframeWindow: Window
+  ): Promise<string> => {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Could not create canvas context');
+    context.fillStyle = backgroundColor === 'transparent' ? '#ffffff' : backgroundColor;
+    context.fillRect(0, 0, width, height);
+
+    const bodyRect = body.getBoundingClientRect();
+    const shouldSkip = (element: Element) => ['SCRIPT', 'STYLE', 'LINK', 'META'].includes(element.tagName);
+    const captureElement = async (element: HTMLElement): Promise<void> => {
+      if (shouldSkip(element)) return;
+      const rect = element.getBoundingClientRect();
+      const childWidth = Math.max(1, Math.ceil(rect.width || width));
+      const childHeight = Math.max(1, Math.ceil(rect.height || child.scrollHeight));
+      const x = Math.round(rect.left - bodyRect.left);
+      const y = Math.round(rect.top - bodyRect.top);
+      if (childHeight <= 0 || y > height || y + childHeight < 0) return;
+
+      console.log('captureIframe: Capturing element...', {
+        tag: element.tagName,
+        x,
+        y,
+        childWidth,
+        childHeight
+      });
+
+      try {
+        const dataUrl = await htmlToImage.toPng(element, {
+          width: childWidth,
+          height: childHeight,
+          canvasWidth: childWidth,
+          canvasHeight: childHeight,
+          pixelRatio: 1,
+          backgroundColor: 'transparent',
+          skipFonts: true,
+          cacheBust: true,
+          includeStyleProperties: HTML_CAPTURE_STYLE_PROPERTIES,
+          imagePlaceholder: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==',
+          filter: (domNode: HTMLElement) => {
+            if (['SCRIPT', 'STYLE', 'LINK', 'META'].includes(domNode.tagName)) {
+              return false;
+            }
+            if (iframeWindow.SVGElement && domNode instanceof iframeWindow.SVGElement) {
+              return false;
+            }
+            return true;
+          }
+        });
+        const image = await loadImageDataUrl(dataUrl);
+        context.drawImage(image, x, y, childWidth, childHeight);
+      } catch (error) {
+        const children = Array.from(element.children).filter((child) => !shouldSkip(child)) as HTMLElement[];
+        if (children.length === 0) {
+          console.warn('captureIframe: element capture failed with no children:', element.tagName, error);
+          return;
+        }
+        console.warn('captureIframe: element capture failed, descending into children:', element.tagName, error);
+        for (const child of children) {
+          await captureElement(child);
+        }
+      }
+    };
+
+    const children = Array.from(body.children).filter((child) => !shouldSkip(child)) as HTMLElement[];
+    for (const child of children) {
+      await captureElement(child);
+    }
+
+    return canvas.toDataURL('image/png');
+  };
   
   // ユーザー確認
   const ensureLogin = async () => {
@@ -845,50 +1221,6 @@ graph TD
   }, [mode]); // modeが変わったときにも適用されるようにする
 
   // HTMLかReactかMarkdownかを判定する関数
-  const detectCodeType = (code: string): 'react' | 'html' | 'markdown' => {
-    // Markdownの特徴を検出
-    const markdownFeatures = [
-      /^#{1,6}\s/m.test(code),
-      /```[\s\S]*?```/.test(code),
-      /\*\*.*?\*\*/.test(code),
-      /\[.*?\]\(.*?\)/.test(code),
-      /^\s*[-*+]\s/m.test(code),
-      /^\s*\d+\.\s/m.test(code),
-      /> .*/m.test(code),
-      /\|.*\|.*\|/.test(code),
-      /\$.*?\$/.test(code),
-      /^\s*```mermaid/m.test(code),
-    ];
-    const mdFeatureCount = markdownFeatures.filter(Boolean).length;
-    
-    // HTMLの特徴を検出
-    const htmlFeatures = [
-      /<!DOCTYPE\s+html>/i.test(code),
-      /<html/i.test(code),
-      /<head>/.test(code),
-      /<body/.test(code)
-    ];
-    
-    // Reactの特徴を検出
-    const reactFeatures = [
-      /import\s+.*from\s+/i.test(code),
-      /export\s+default\s+/i.test(code),
-      /function\s+[A-Z][A-Za-z0-9]*\s*\(/i.test(code),
-      /const\s+[A-Z][A-Za-z0-9]*\s*=/i.test(code) && /=>\s*{/.test(code),
-      /useState|useEffect|useRef|React\.Component/i.test(code)
-    ];
-    
-    // 特徴の数を数える
-    const htmlFeatureCount = htmlFeatures.filter(Boolean).length;
-    const reactFeatureCount = reactFeatures.filter(Boolean).length;
-    
-    // Markdown特徴が2つ以上あれば優先（Mermaidブロックや数式がある場合も含む）
-    if (mdFeatureCount >= 2) return 'markdown';
-    
-    // それ以外は従来通り
-    return htmlFeatureCount > reactFeatureCount ? 'html' : 'react';
-  };
-
   // Mermaid記法のエラーになりやすい構文を事前補正する関数を追加
   const preprocessMermaidSyntax = (html: string): string => {
     return html.replace(
@@ -921,15 +1253,14 @@ graph TD
 
   // Compile code and set component
   const compileAndSetComponent = async (codeToCompile: string) => {
+    const detectedMode = detectCodeType(codeToCompile);
+
     // Reactモードでかつ、ESBuildが初期化されていない場合は待機
-    if (!esbuildReady && detectCodeType(codeToCompile) === 'react') {
+    if (!esbuildLoaded && detectedMode === 'react') {
       console.log('ESBuild初期化待ち - コードを保存します');
       setPendingCode(codeToCompile);
       return;
     }
-    
-    // コードタイプを自動判定
-    const detectedMode = detectCodeType(codeToCompile);
     
     // 必要な場合はモードを更新
     if (mode !== detectedMode) {
@@ -967,8 +1298,6 @@ graph TD
   useEffect(() => {
     // ESBuild初期化完了時のコールバック
     const handleEsbuildReady = () => {
-      setEsbuildReady(true);
-
       // 初期化待ちのコードがあれば処理する
       if (pendingCode) {
         compileAndSetComponent(pendingCode);
@@ -1046,27 +1375,91 @@ graph TD
           // === ここまで ===
 
           try { // ★エラーキャッチのためtry...catchを追加
-            console.log('captureIframe: Calling htmlToImage.toPng...'); // ★デバッグログ追加
-            const dataUrl = await htmlToImage.toPng(mainContent as HTMLElement, {
+            const transparentPixel = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+            const maxPixels = 16_000_000;
+            const fallbackRatio = Math.max(0.5, Math.min(1, Math.sqrt(maxPixels / Math.max(1, contentWidth * contentHeight))));
+            const baseOptions = {
               width: contentWidth,
               height: contentHeight,
-              canvasWidth: contentWidth * 2, // Use content size for canvas
-              canvasHeight: contentHeight * 2,
-              pixelRatio: 2,
-              backgroundColor: computedBgColor, // ← ここを修正
-              skipFonts: true, // Skip external fonts
+              backgroundColor: computedBgColor,
+              skipFonts: true,
+              cacheBust: true,
+              includeStyleProperties: HTML_CAPTURE_STYLE_PROPERTIES,
+              imagePlaceholder: transparentPixel,
+              filter: (domNode: HTMLElement) => {
+                if (['SCRIPT', 'STYLE', 'LINK', 'META'].includes(domNode.tagName)) {
+                  return false;
+                }
+                if (iframeWindow.SVGElement && domNode instanceof iframeWindow.SVGElement) {
+                  return false;
+                }
+                return true;
+              },
               style: {
-                // 元の要素のスタイルを維持しつつ、スケールを1に固定
-                transform: 'scale(1)', 
+                transform: 'scale(1)',
                 transformOrigin: 'top left',
                 width: `${contentWidth}px`,
                 height: `${contentHeight}px`,
-                margin: '0', // Remove potential margins
-                padding: '0', // Remove potential padding
-                backgroundColor: computedBgColor // ← ここも修正
+                margin: '0',
+                padding: '0',
+                backgroundColor: computedBgColor
               }
-            });
-            console.log('captureIframe: htmlToImage.toPng finished.'); // ★デバッグログ追加
+            };
+            const attempts = [
+              { pixelRatio: 1, canvasWidth: contentWidth, canvasHeight: contentHeight },
+              {
+                pixelRatio: fallbackRatio,
+                canvasWidth: Math.max(1, Math.floor(contentWidth * fallbackRatio)),
+                canvasHeight: Math.max(1, Math.floor(contentHeight * fallbackRatio))
+              }
+            ];
+            let dataUrl: string | null = null;
+            let lastError: unknown = null;
+            for (const attempt of attempts) {
+              try {
+                console.log('captureIframe: Calling htmlToImage.toPng...', attempt);
+                dataUrl = await htmlToImage.toPng(mainContent as HTMLElement, {
+                  ...baseOptions,
+                  ...attempt
+                });
+                break;
+              } catch (captureError) {
+                lastError = captureError;
+                console.warn('captureIframe: htmlToImage.toPng attempt failed:', captureError);
+              }
+            }
+            if (!dataUrl) {
+              console.warn('captureIframe: htmlToImage failed, falling back to top-level element capture:', lastError);
+              try {
+                dataUrl = await captureHtmlByTopLevelElements(
+                  mainContent as HTMLElement,
+                  contentWidth,
+                  contentHeight,
+                  computedBgColor,
+                  iframeWindow
+                );
+              } catch (elementError) {
+                console.warn('captureIframe: top-level element capture failed, falling back to sliced capture:', elementError);
+                try {
+                  dataUrl = await captureHtmlInSlices(
+                    mainContent as HTMLElement,
+                    contentWidth,
+                    contentHeight,
+                    computedBgColor,
+                    iframeWindow
+                  );
+                } catch (sliceError) {
+                  console.warn('captureIframe: sliced capture failed, falling back to html2canvas:', sliceError);
+                  dataUrl = await captureHtmlWithHtml2Canvas(
+                    mainContent as HTMLElement,
+                    contentWidth,
+                    contentHeight,
+                    computedBgColor
+                  );
+                }
+              }
+            }
+            console.log('captureIframe: image generation finished.'); // ★デバッグログ追加
  
             // Create download link
             const link = document.createElement('a');
@@ -1335,7 +1728,7 @@ graph TD
       )}
       {/* 最近の図解ストリップはWelcomeScreen内に配置（ここでは表示しない） */}
       {/* Main content */}
-      <div className="flex flex-1 overflow-hidden" style={{ width: '100%', maxWidth: '100%' }}>
+      <div className={`flex flex-1 ${mode === 'html' ? 'overflow-visible' : 'overflow-hidden'}`} style={{ width: '100%', maxWidth: '100%' }}>
         {/* Code editor */}
         {showCode && !isMobileDevice && (
           <div className="w-1/2 border-r border-gray-200 flex flex-col">
@@ -1383,7 +1776,7 @@ graph TD
         )}
         
         {/* Preview */}
-        <div className={`${showCode && !isMobileDevice ? 'w-1/2' : 'w-full'} flex flex-col overflow-hidden relative`}>
+        <div className={`${showCode && !isMobileDevice ? 'w-1/2' : 'w-full'} flex flex-col ${mode === 'html' ? 'overflow-visible' : 'overflow-hidden'} relative`}>
           {/* モバイル：右上にダウンロード＆ペーストボタン */}
           {isMobileDevice && (
             <div className="absolute top-2 right-2 flex gap-2 z-20 items-center">
@@ -1546,14 +1939,16 @@ graph TD
           )}
           {mode === 'html' ? (
             // HTMLモードのプレビュー
-            <div className="flex-1 flex flex-col overflow-hidden bg-gray-50" style={{ height: 'calc(80vh - 100px)' }}>
+            <div className="flex-1 flex flex-col overflow-visible bg-gray-50">
               {code ? (
                 <iframe
                   ref={htmlPreviewRef}
-                  className="w-full h-full border-none"
+                  className="w-full border-none"
+                  style={{ height: `${htmlPreviewHeight}px` }}
                   srcDoc={iframeSrcDoc}
                   title="HTML Preview"
                   sandbox="allow-scripts allow-same-origin"
+                  onLoad={scheduleHtmlPreviewResize}
                 ></iframe>
               ) : (
                 <div className="h-full" />
